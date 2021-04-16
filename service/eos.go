@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -40,7 +41,7 @@ func (m *EOS) AddKey(privateKey string) (*ecc.PublicKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("privateKey parameter is not a valid format: %s", err)
 	}
-	err = m.API.Signer.ImportPrivateKey(privateKey)
+	err = m.API.Signer.ImportPrivateKey(context.Background(), privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed importing key, error: %v", err)
 	}
@@ -60,7 +61,7 @@ func (m *EOS) Trx(retries int, actions ...*eosc.Action) (*eosc.PushTransactionFu
 	if m.API.Signer == nil && m.SetSignerFn != nil {
 		m.SetSignerFn(m.API)
 	}
-	resp, err := m.API.SignPushActions(actions...)
+	resp, err := m.API.SignPushActions(context.Background(), actions...)
 	if err != nil {
 		if retries > 0 {
 			if isRetryableError(err) {
@@ -85,12 +86,12 @@ func (m *EOS) SimpleTrx(contract, action, actor string, data interface{}) (*eosc
 
 func (m *EOS) DebugTrx(contract, action, actor string, data interface{}) (*eosc.PushTransactionFullResp, error) {
 	txOpts := &eosc.TxOptions{}
-	if err := txOpts.FillFromChain(m.API); err != nil {
+	if err := txOpts.FillFromChain(context.Background(), m.API); err != nil {
 		return nil, err
 	}
 
 	tx := eosc.NewTransaction([]*eosc.Action{buildAction(contract, action, actor, data)}, txOpts)
-	signedTx, packedTx, err := m.API.SignTransaction(tx, txOpts.ChainID, eosc.CompressionNone)
+	signedTx, packedTx, err := m.API.SignTransaction(context.Background(), tx, txOpts.ChainID, eosc.CompressionNone)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +102,7 @@ func (m *EOS) DebugTrx(contract, action, actor string, data interface{}) (*eosc.
 	}
 
 	fmt.Println(string(content))
-	return m.API.PushTransaction(packedTx)
+	return m.API.PushTransaction(context.Background(), packedTx)
 }
 
 func (m *EOS) CreateAccount(accountName string, publicKey *ecc.PublicKey, failIfExists bool) (eosc.AccountName, error) {
@@ -174,7 +175,7 @@ func (m *EOS) SetEOSIOCode(accountName string, publicKey *ecc.PublicKey) error {
 func (m *EOS) GetTableRows(request eosc.GetTableRowsRequest, rows interface{}) error {
 
 	request.JSON = true
-	response, err := m.API.GetTableRows(request)
+	response, err := m.API.GetTableRows(context.Background(), request)
 	if err != nil {
 		return fmt.Errorf("get table rows %v", err)
 	}
@@ -188,7 +189,7 @@ func (m *EOS) GetTableRows(request eosc.GetTableRowsRequest, rows interface{}) e
 
 func (m *EOS) GetBalance(account eosc.AccountName, symbol eosc.Symbol, contract eosc.AccountName) (*eosc.Asset, error) {
 
-	assets, err := m.API.GetCurrencyBalance(account, symbol.MustSymbolCode().String(), contract)
+	assets, err := m.API.GetCurrencyBalance(context.Background(), account, symbol.MustSymbolCode().String(), contract)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get currency balance, error: %v", err)
 	}
