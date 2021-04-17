@@ -42,7 +42,7 @@ func (m *TokenContract) CreateTokenBase(contract string, data interface{}, failI
 }
 
 func (m *TokenContract) Issue(contract, to, quantity, memo string) (*eosc.PushTransactionFullResp, error) {
-	qty, err := eosc.NewEOSAssetFromString(quantity)
+	qty, err := eosc.NewAssetFromString(quantity)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse quantity, error: %v", err)
 	}
@@ -55,7 +55,7 @@ func (m *TokenContract) Issue(contract, to, quantity, memo string) (*eosc.PushTr
 }
 
 func (m *TokenContract) Transfer(contract, from, to, quantity, memo string) (*eosc.PushTransactionFullResp, error) {
-	qty, err := eosc.NewEOSAssetFromString(quantity)
+	qty, err := eosc.NewAssetFromString(quantity)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse quantity, error: %v", err)
 	}
