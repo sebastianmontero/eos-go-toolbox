@@ -80,17 +80,25 @@ func isRetryableError(err error) bool {
 		strings.Contains(errMsg, "Transaction took too long")
 }
 
-func (m *EOS) SimpleTrx(contract, action, actor string, data interface{}) (*eosc.PushTransactionFullResp, error) {
-	return m.Trx(retries, buildAction(contract, action, actor, data))
+func (m *EOS) SimpleTrx(contract, actionName, actor string, data interface{}) (*eosc.PushTransactionFullResp, error) {
+	action, err := m.buildAction(contract, actionName, actor, data)
+	if err != nil {
+		return nil, err
+	}
+	return m.Trx(retries, action)
 }
 
-func (m *EOS) DebugTrx(contract, action, actor string, data interface{}) (*eosc.PushTransactionFullResp, error) {
+func (m *EOS) DebugTrx(contract, actionName, actor string, data interface{}) (*eosc.PushTransactionFullResp, error) {
 	txOpts := &eosc.TxOptions{}
 	if err := txOpts.FillFromChain(context.Background(), m.API); err != nil {
 		return nil, err
 	}
+	action, err := m.buildAction(contract, actionName, actor, data)
+	if err != nil {
+		return nil, err
+	}
 
-	tx := eosc.NewTransaction([]*eosc.Action{buildAction(contract, action, actor, data)}, txOpts)
+	tx := eosc.NewTransaction([]*eosc.Action{action}, txOpts)
 	signedTx, packedTx, err := m.API.SignTransaction(context.Background(), tx, txOpts.ChainID, eosc.CompressionNone)
 	if err != nil {
 		return nil, err
@@ -199,7 +207,20 @@ func (m *EOS) GetBalance(account eosc.AccountName, symbol eosc.Symbol, contract 
 	return nil, nil
 }
 
-func buildAction(contract, action, actor string, data interface{}) *eosc.Action {
+func (m *EOS) buildAction(contract, action, actor string, data interface{}) (*eosc.Action, error) {
+	var actionData eosc.ActionData
+	switch v := data.(type) {
+	case map[string]interface{}:
+		actionBinary, err := m.API.ABIJSONToBin(context.Background(), eosc.AN(contract), eosc.Name(action), v)
+		if err != nil {
+			return nil, fmt.Errorf("cannot pack action data for action: %v", err)
+		}
+		actionData = eosc.NewActionDataFromHexData([]byte(actionBinary))
+
+	default:
+		actionData = eosc.NewActionData(data)
+	}
+
 	return &eosc.Action{
 		Account: eosc.AN(contract),
 		Name:    eosc.ActN(action),
@@ -209,6 +230,6 @@ func buildAction(contract, action, actor string, data interface{}) *eosc.Action 
 				Permission: eosc.PN("active"),
 			},
 		},
-		ActionData: eosc.NewActionData(data),
-	}
+		ActionData: actionData,
+	}, nil
 }
