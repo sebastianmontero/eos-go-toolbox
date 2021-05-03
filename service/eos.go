@@ -210,6 +210,8 @@ func (m *EOS) GetBalance(account eosc.AccountName, symbol eosc.Symbol, contract 
 func (m *EOS) buildAction(contract, action, actor string, data interface{}) (*eosc.Action, error) {
 	var actionData eosc.ActionData
 	switch v := data.(type) {
+	case nil:
+		actionData = eosc.NewActionDataFromHexData([]byte("{}"))
 	case map[string]interface{}:
 		actionBinary, err := m.API.ABIJSONToBin(context.Background(), eosc.AN(contract), eosc.Name(action), v)
 		if err != nil {
