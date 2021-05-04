@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/eoscanada/eos-go"
 	eosc "github.com/eoscanada/eos-go"
 	"github.com/eoscanada/eos-go/ecc"
 	"github.com/eoscanada/eos-go/system"
@@ -193,6 +196,45 @@ func (m *EOS) GetTableRows(request eosc.GetTableRowsRequest, rows interface{}) e
 		return fmt.Errorf("json to structs %v", err)
 	}
 	return nil
+}
+
+func (m *EOS) GetComposedIndexValue(firstValue interface{}, secondValue interface{}) (string, error) {
+
+	firstInt64, err := m.getUInt64Value(firstValue)
+	if err != nil {
+		return "", err
+	}
+	secondInt64, err := m.getUInt64Value(secondValue)
+	if err != nil {
+		return "", err
+	}
+	firstBigInt := big.NewInt(0)
+	secondBigInt := big.NewInt(0)
+	firstBigInt.SetUint64(firstInt64)
+	secondBigInt.SetUint64(secondInt64)
+	firstBigInt = firstBigInt.Lsh(firstBigInt, 64)
+	firstBigInt = firstBigInt.Add(firstBigInt, secondBigInt)
+	return firstBigInt.String(), nil
+}
+
+func (m *EOS) getUInt64Value(value interface{}) (uint64, error) {
+
+	switch v := value.(type) {
+	case string, eos.Name:
+		vUint64, err := eos.StringToName(fmt.Sprintf("%v", v))
+		if err != nil {
+			return 0, fmt.Errorf("failed to convert status to uint64, err: %v", err)
+		}
+		return vUint64, nil
+	case int, int32, int64, uint64:
+		vUint64, err := strconv.ParseUint(fmt.Sprintf("%v", v), 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return vUint64, nil
+	default:
+		return 0, fmt.Errorf("unable to get uint64 value from: %v", value)
+	}
 }
 
 func (m *EOS) GetBalance(account eosc.AccountName, symbol eosc.Symbol, contract eosc.AccountName) (*eosc.Asset, error) {
