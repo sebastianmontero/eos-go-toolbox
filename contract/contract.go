@@ -32,12 +32,12 @@ type Contract struct {
 }
 
 //ExecActionC Accepts contract name on which to execute the action
-func (m *Contract) ExecActionC(contract, actor, action string, data interface{}) (*eos.PushTransactionFullResp, error) {
-	return m.EOS.SimpleTrx(contract, action, actor, data)
+func (m *Contract) ExecActionC(contract string, permissionLevel interface{}, action string, data interface{}) (*eos.PushTransactionFullResp, error) {
+	return m.EOS.SimpleTrx(contract, action, permissionLevel, data)
 }
 
-func (m *Contract) ExecAction(actor, action string, data interface{}) (*eos.PushTransactionFullResp, error) {
-	return m.ExecActionC(m.ContractName, actor, action, data)
+func (m *Contract) ExecAction(permissionLevel interface{}, action string, data interface{}) (*eos.PushTransactionFullResp, error) {
+	return m.ExecActionC(m.ContractName, permissionLevel, action, data)
 }
 
 func (m *Contract) GetTableRows(request eos.GetTableRowsRequest, rows interface{}) error {
