@@ -183,6 +183,35 @@ func (m *EOS) SetEOSIOCode(accountName string, publicKey *ecc.PublicKey) error {
 	return nil
 }
 
+func (m *EOS) CreateSimplePermission(account, newPermission string, publicKey *ecc.PublicKey) error {
+	acct := eosc.AN(account)
+	permission := eosc.PermissionName("active")
+	codePermissionAction := system.NewUpdateAuth(acct,
+		eosc.PermissionName(newPermission),
+		permission,
+		eosc.Authority{
+			Threshold: 1,
+			Keys: []eosc.KeyWeight{{
+				PublicKey: *publicKey,
+				Weight:    1,
+			}},
+			Accounts: []eosc.PermissionLevelWeight{{
+				Permission: eosc.PermissionLevel{
+					Actor:      acct,
+					Permission: permission,
+				},
+				Weight: 1,
+			}},
+			Waits: []eosc.WaitWeight{},
+		}, permission)
+
+	_, err := m.Trx(retries, codePermissionAction)
+	if err != nil {
+		return fmt.Errorf("error creating permission: %v, for account: %v, error: %v", newPermission, account, err)
+	}
+	return nil
+}
+
 func (m *EOS) GetTableRows(request eosc.GetTableRowsRequest, rows interface{}) error {
 
 	request.JSON = true
