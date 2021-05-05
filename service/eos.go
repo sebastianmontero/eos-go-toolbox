@@ -212,6 +212,16 @@ func (m *EOS) CreateSimplePermission(account, newPermission string, publicKey *e
 	return nil
 }
 
+func (m *EOS) LinkPermission(account, action, permission string) error {
+	acct := eosc.AN(account)
+	linkAction := system.NewLinkAuth(acct, acct, eos.ActN(action), eosc.PermissionName(permission))
+	_, err := m.Trx(retries, linkAction)
+	if err != nil {
+		return fmt.Errorf("error linking permission: %v, to action %v:%v, error: %v", permission, account, action, err)
+	}
+	return nil
+}
+
 func (m *EOS) GetTableRows(request eosc.GetTableRowsRequest, rows interface{}) error {
 
 	request.JSON = true
