@@ -83,20 +83,20 @@ func isRetryableError(err error) bool {
 		strings.Contains(errMsg, "Transaction took too long")
 }
 
-func (m *EOS) SimpleTrx(contract, actionName, actor string, data interface{}) (*eosc.PushTransactionFullResp, error) {
-	action, err := m.buildAction(contract, actionName, actor, data)
+func (m *EOS) SimpleTrx(contract, actionName string, permissionLevel interface{}, data interface{}) (*eosc.PushTransactionFullResp, error) {
+	action, err := m.buildAction(contract, actionName, permissionLevel, data)
 	if err != nil {
 		return nil, err
 	}
 	return m.Trx(retries, action)
 }
 
-func (m *EOS) DebugTrx(contract, actionName, actor string, data interface{}) (*eosc.PushTransactionFullResp, error) {
+func (m *EOS) DebugTrx(contract, actionName string, permissionLevel interface{}, data interface{}) (*eosc.PushTransactionFullResp, error) {
 	txOpts := &eosc.TxOptions{}
 	if err := txOpts.FillFromChain(context.Background(), m.API); err != nil {
 		return nil, err
 	}
-	action, err := m.buildAction(contract, actionName, actor, data)
+	action, err := m.buildAction(contract, actionName, permissionLevel, data)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +249,7 @@ func (m *EOS) GetBalance(account eosc.AccountName, symbol eosc.Symbol, contract 
 	return nil, nil
 }
 
-func (m *EOS) buildAction(contract, action, actor string, data interface{}) (*eosc.Action, error) {
+func (m *EOS) buildAction(contract, action string, permissionLevel interface{}, data interface{}) (*eosc.Action, error) {
 	var actionData eosc.ActionData
 	switch v := data.(type) {
 	case nil:
@@ -265,15 +265,31 @@ func (m *EOS) buildAction(contract, action, actor string, data interface{}) (*eo
 		actionData = eosc.NewActionData(data)
 	}
 
+	pl, err := m.ParsePermissionLevel(permissionLevel)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &eosc.Action{
-		Account: eosc.AN(contract),
-		Name:    eosc.ActN(action),
-		Authorization: []eosc.PermissionLevel{
-			{
-				Actor:      eosc.AccountName(actor),
-				Permission: eosc.PN("active"),
-			},
-		},
-		ActionData: actionData,
+		Account:       eosc.AN(contract),
+		Name:          eosc.ActN(action),
+		Authorization: []eosc.PermissionLevel{pl},
+		ActionData:    actionData,
 	}, nil
+}
+
+func (m *EOS) ParsePermissionLevel(permissionLevel interface{}) (eosc.PermissionLevel, error) {
+	switch v := permissionLevel.(type) {
+	case eosc.PermissionLevel:
+		return v, nil
+	case eosc.AccountName, eosc.Name, string:
+		pl, err := eosc.NewPermissionLevel(fmt.Sprintf("%v", v))
+		if err != nil {
+			return pl, fmt.Errorf("unable to parse permission level: %v, error: %v", v, err)
+		}
+		return pl, nil
+	default:
+		return eosc.PermissionLevel{}, fmt.Errorf("unable to parse permission level: %v, of type: %t", v, v)
+	}
 }
