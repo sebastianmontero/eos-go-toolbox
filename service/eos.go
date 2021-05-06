@@ -118,11 +118,31 @@ func (m *EOS) DebugTrx(contract, actionName string, permissionLevel interface{},
 
 func (m *EOS) CreateAccount(accountName string, publicKey *ecc.PublicKey, failIfExists bool) (eosc.AccountName, error) {
 	account := eosc.AccountName(accountName)
+	if !failIfExists {
+		accountData, err := m.GetAccount(accountName)
+		if err != nil {
+			return "", err
+		}
+		if accountData != nil {
+			return account, nil
+		}
+	}
 	_, err := m.Trx(retries, system.NewNewAccount("eosio", account, *publicKey))
 	if err != nil {
 		if failIfExists || !strings.Contains(err.Error(), "name is already taken") {
 			return "", err
 		}
+	}
+	return account, nil
+}
+
+func (m *EOS) GetAccount(accountName string) (*eosc.AccountResp, error) {
+	account, err := m.API.GetAccount(context.Background(), eosc.AccountName(accountName))
+	if err != nil {
+		if strings.Contains(err.Error(), "resource not found") {
+			return nil, nil
+		}
+		return nil, err
 	}
 	return account, nil
 }
