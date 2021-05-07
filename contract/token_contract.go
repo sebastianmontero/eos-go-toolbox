@@ -22,12 +22,16 @@ func NewTokenContract(eos *service.EOS) *TokenContract {
 }
 
 func (m *TokenContract) CreateToken(contract, issuer string, maxSupply eosc.Asset, failIfExists bool) (*eosc.PushTransactionFullResp, error) {
+	return m.CreateTokenT(eosc.AN(contract), eosc.AN(issuer), maxSupply, failIfExists)
+}
+
+func (m *TokenContract) CreateTokenT(contract, issuer eosc.AccountName, maxSupply eosc.Asset, failIfExists bool) (*eosc.PushTransactionFullResp, error) {
 
 	data := token.Create{
-		Issuer:        eosc.AN(issuer),
+		Issuer:        issuer,
 		MaximumSupply: maxSupply,
 	}
-	return m.CreateTokenBase(contract, data, failIfExists)
+	return m.CreateTokenBase(string(contract), data, failIfExists)
 }
 
 func (m *TokenContract) CreateTokenBase(contract string, data interface{}, failIfExists bool) (*eosc.PushTransactionFullResp, error) {
@@ -46,12 +50,16 @@ func (m *TokenContract) Issue(contract, to, quantity, memo string) (*eosc.PushTr
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse quantity, error: %v", err)
 	}
+	return m.IssueT(eosc.AN(contract), eosc.AN(to), qty, memo)
+}
+
+func (m *TokenContract) IssueT(contract, to eosc.AccountName, quantity eosc.Asset, memo string) (*eosc.PushTransactionFullResp, error) {
 	data := token.Issue{
-		To:       eosc.AN(to),
-		Quantity: qty,
+		To:       to,
+		Quantity: quantity,
 		Memo:     memo,
 	}
-	return m.ExecActionC(contract, string(contract), "issue", data)
+	return m.ExecActionC(string(contract), string(contract), "issue", data)
 }
 
 func (m *TokenContract) Transfer(contract, from, to, quantity, memo string) (*eosc.PushTransactionFullResp, error) {
@@ -59,13 +67,18 @@ func (m *TokenContract) Transfer(contract, from, to, quantity, memo string) (*eo
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse quantity, error: %v", err)
 	}
+	return m.TransferT(eosc.AN(contract), eosc.AN(from), eosc.AN(to), qty, memo)
+}
+
+func (m *TokenContract) TransferT(contract, from, to eosc.AccountName, quantity eosc.Asset, memo string) (*eosc.PushTransactionFullResp, error) {
+
 	data := token.Transfer{
-		From:     eosc.AN(from),
-		To:       eosc.AN(to),
-		Quantity: qty,
+		From:     from,
+		To:       to,
+		Quantity: quantity,
 		Memo:     memo,
 	}
-	return m.ExecActionC(contract, string(from), "transfer", data)
+	return m.ExecActionC(string(contract), string(from), "transfer", data)
 }
 
 func (m *TokenContract) GetBalance(account eosc.AccountName, symbol eosc.Symbol, contract eosc.AccountName) (*eosc.Asset, error) {
