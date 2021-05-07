@@ -216,15 +216,19 @@ func (m *EOS) SetEOSIOCode(accountName interface{}, publicKey *ecc.PublicKey) er
 	return nil
 }
 
-func (m *EOS) CreateSimplePermission(accountName interface{}, newPermission string, publicKey *ecc.PublicKey) error {
+func (m *EOS) CreateSimplePermission(accountName, newPermissionName interface{}, publicKey *ecc.PublicKey) error {
 	acct, err := util.ToAccountName(accountName)
+	if err != nil {
+		return err
+	}
+	newPermission, err := util.ToPermissionName(newPermissionName)
 	if err != nil {
 		return err
 	}
 	permission := eosc.PermissionName("active")
 	codePermissionAction := system.NewUpdateAuth(
 		acct,
-		eosc.PermissionName(newPermission),
+		newPermission,
 		permission,
 		eosc.Authority{
 			Threshold: 1,
@@ -259,7 +263,7 @@ func (m *EOS) LinkPermission(accountName, actionName, permissionName interface{}
 	if err != nil {
 		return err
 	}
-	permission, err := util.ToPermissionName(actionName)
+	permission, err := util.ToPermissionName(permissionName)
 	if err != nil {
 		return err
 	}
