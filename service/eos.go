@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/eoscanada/eos-go"
 	eosc "github.com/eoscanada/eos-go"
 	"github.com/eoscanada/eos-go/ecc"
 	"github.com/eoscanada/eos-go/system"
+	"github.com/sebastianmontero/eos-go-toolbox/util"
 )
 
 var EOSIOKey = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
@@ -83,7 +83,7 @@ func isRetryableError(err error) bool {
 		strings.Contains(errMsg, "Transaction took too long")
 }
 
-func (m *EOS) SimpleTrx(contract, actionName string, permissionLevel interface{}, data interface{}) (*eosc.PushTransactionFullResp, error) {
+func (m *EOS) SimpleTrx(contract, actionName, permissionLevel, data interface{}) (*eosc.PushTransactionFullResp, error) {
 	action, err := m.buildAction(contract, actionName, permissionLevel, data)
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func (m *EOS) SimpleTrx(contract, actionName string, permissionLevel interface{}
 	return m.Trx(retries, action)
 }
 
-func (m *EOS) DebugTrx(contract, actionName string, permissionLevel interface{}, data interface{}) (*eosc.PushTransactionFullResp, error) {
+func (m *EOS) DebugTrx(contract, actionName, permissionLevel, data interface{}) (*eosc.PushTransactionFullResp, error) {
 	txOpts := &eosc.TxOptions{}
 	if err := txOpts.FillFromChain(context.Background(), m.API); err != nil {
 		return nil, err
@@ -116,8 +116,11 @@ func (m *EOS) DebugTrx(contract, actionName string, permissionLevel interface{},
 	return m.API.PushTransaction(context.Background(), packedTx)
 }
 
-func (m *EOS) CreateAccount(accountName string, publicKey *ecc.PublicKey, failIfExists bool) (eosc.AccountName, error) {
-	account := eosc.AccountName(accountName)
+func (m *EOS) CreateAccount(accountName interface{}, publicKey *ecc.PublicKey, failIfExists bool) (eosc.AccountName, error) {
+	account, err := util.ToAccountName(accountName)
+	if err != nil {
+		return "", err
+	}
 	if !failIfExists {
 		accountData, err := m.GetAccount(accountName)
 		if err != nil {
@@ -127,7 +130,7 @@ func (m *EOS) CreateAccount(accountName string, publicKey *ecc.PublicKey, failIf
 			return account, nil
 		}
 	}
-	_, err := m.Trx(retries, system.NewNewAccount("eosio", account, *publicKey))
+	_, err = m.Trx(retries, system.NewNewAccount("eosio", account, *publicKey))
 	if err != nil {
 		if failIfExists || !strings.Contains(err.Error(), "name is already taken") {
 			return "", err
@@ -136,19 +139,23 @@ func (m *EOS) CreateAccount(accountName string, publicKey *ecc.PublicKey, failIf
 	return account, nil
 }
 
-func (m *EOS) GetAccount(accountName string) (*eosc.AccountResp, error) {
-	account, err := m.API.GetAccount(context.Background(), eosc.AccountName(accountName))
+func (m *EOS) GetAccount(accountName interface{}) (*eosc.AccountResp, error) {
+	account, err := util.ToAccountName(accountName)
+	if err != nil {
+		return nil, err
+	}
+	accountData, err := m.API.GetAccount(context.Background(), account)
 	if err != nil {
 		if strings.Contains(err.Error(), "resource not found") {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return account, nil
+	return accountData, nil
 }
 
 //SetContract sets contract, if publicKey is not nil it creates the account
-func (m *EOS) SetContract(accountName, wasmFile, abiFile string, publicKey *ecc.PublicKey) (*eosc.PushTransactionFullResp, error) {
+func (m *EOS) SetContract(accountName interface{}, wasmFile, abiFile string, publicKey *ecc.PublicKey) (*eosc.PushTransactionFullResp, error) {
 
 	if publicKey != nil {
 		_, err := m.CreateAccount(accountName, publicKey, false)
@@ -156,7 +163,10 @@ func (m *EOS) SetContract(accountName, wasmFile, abiFile string, publicKey *ecc.
 			return nil, err
 		}
 	}
-	account := eosc.AccountName(accountName)
+	account, err := util.ToAccountName(accountName)
+	if err != nil {
+		return nil, err
+	}
 	setCodeAction, err := system.NewSetCode(account, wasmFile)
 	if err != nil {
 		return nil, fmt.Errorf("unable construct set_code action: %v", err)
@@ -175,8 +185,11 @@ func (m *EOS) SetContract(accountName, wasmFile, abiFile string, publicKey *ecc.
 	return resp, nil
 }
 
-func (m *EOS) SetEOSIOCode(accountName string, publicKey *ecc.PublicKey) error {
-	acct := eosc.AN(accountName)
+func (m *EOS) SetEOSIOCode(accountName interface{}, publicKey *ecc.PublicKey) error {
+	acct, err := util.ToAccountName(accountName)
+	if err != nil {
+		return err
+	}
 	codePermissionAction := system.NewUpdateAuth(acct,
 		"active",
 		"owner",
@@ -196,17 +209,21 @@ func (m *EOS) SetEOSIOCode(accountName string, publicKey *ecc.PublicKey) error {
 			Waits: []eosc.WaitWeight{},
 		}, "owner")
 
-	_, err := m.Trx(retries, codePermissionAction)
+	_, err = m.Trx(retries, codePermissionAction)
 	if err != nil {
 		return fmt.Errorf("error setting eosio.code permission for account: %v, error: %v", accountName, err)
 	}
 	return nil
 }
 
-func (m *EOS) CreateSimplePermission(account, newPermission string, publicKey *ecc.PublicKey) error {
-	acct := eosc.AN(account)
+func (m *EOS) CreateSimplePermission(accountName interface{}, newPermission string, publicKey *ecc.PublicKey) error {
+	acct, err := util.ToAccountName(accountName)
+	if err != nil {
+		return err
+	}
 	permission := eosc.PermissionName("active")
-	codePermissionAction := system.NewUpdateAuth(acct,
+	codePermissionAction := system.NewUpdateAuth(
+		acct,
 		eosc.PermissionName(newPermission),
 		permission,
 		eosc.Authority{
@@ -225,19 +242,31 @@ func (m *EOS) CreateSimplePermission(account, newPermission string, publicKey *e
 			Waits: []eosc.WaitWeight{},
 		}, permission)
 
-	_, err := m.Trx(retries, codePermissionAction)
+	_, err = m.Trx(retries, codePermissionAction)
 	if err != nil {
-		return fmt.Errorf("error creating permission: %v, for account: %v, error: %v", newPermission, account, err)
+		return fmt.Errorf("error creating permission: %v, for account: %v, error: %v", newPermission, acct, err)
 	}
 	return nil
 }
 
-func (m *EOS) LinkPermission(account, action, permission string) error {
-	acct := eosc.AN(account)
-	linkAction := system.NewLinkAuth(acct, acct, eos.ActN(action), eosc.PermissionName(permission))
-	_, err := m.Trx(retries, linkAction)
+func (m *EOS) LinkPermission(accountName, actionName, permissionName interface{}) error {
+	acct, err := util.ToAccountName(accountName)
 	if err != nil {
-		return fmt.Errorf("error linking permission: %v, to action %v:%v, error: %v", permission, account, action, err)
+		return err
+	}
+
+	action, err := util.ToActionName(actionName)
+	if err != nil {
+		return err
+	}
+	permission, err := util.ToPermissionName(actionName)
+	if err != nil {
+		return err
+	}
+	linkAction := system.NewLinkAuth(acct, acct, action, eosc.PermissionName(permission))
+	_, err = m.Trx(retries, linkAction)
+	if err != nil {
+		return fmt.Errorf("error linking permission: %v, to action %v:%v, error: %v", permission, acct, action, err)
 	}
 	return nil
 }
@@ -279,8 +308,8 @@ func (m *EOS) GetComposedIndexValue(firstValue interface{}, secondValue interfac
 func (m *EOS) getUInt64Value(value interface{}) (uint64, error) {
 
 	switch v := value.(type) {
-	case string, eos.Name:
-		vUint64, err := eos.StringToName(fmt.Sprintf("%v", v))
+	case string, eosc.Name:
+		vUint64, err := eosc.StringToName(fmt.Sprintf("%v", v))
 		if err != nil {
 			return 0, fmt.Errorf("failed to convert status to uint64, err: %v", err)
 		}
@@ -296,9 +325,20 @@ func (m *EOS) getUInt64Value(value interface{}) (uint64, error) {
 	}
 }
 
-func (m *EOS) GetBalance(account eosc.AccountName, symbol eosc.Symbol, contract eosc.AccountName) (*eosc.Asset, error) {
-
-	assets, err := m.API.GetCurrencyBalance(context.Background(), account, symbol.MustSymbolCode().String(), contract)
+func (m *EOS) GetBalance(accountName, symbol, contractName interface{}) (*eosc.Asset, error) {
+	account, err := util.ToAccountName(accountName)
+	if err != nil {
+		return nil, err
+	}
+	contract, err := util.ToAccountName(contractName)
+	if err != nil {
+		return nil, err
+	}
+	sym, err := util.ToSymbol(symbol)
+	if err != nil {
+		return nil, err
+	}
+	assets, err := m.API.GetCurrencyBalance(context.Background(), account, sym.MustSymbolCode().String(), contract)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get currency balance, error: %v", err)
 	}
@@ -308,13 +348,29 @@ func (m *EOS) GetBalance(account eosc.AccountName, symbol eosc.Symbol, contract 
 	return nil, nil
 }
 
-func (m *EOS) buildAction(contract, action string, permissionLevel interface{}, data interface{}) (*eosc.Action, error) {
+func (m *EOS) buildAction(contractName, actionName, permissionLevel, data interface{}) (*eosc.Action, error) {
 	var actionData eosc.ActionData
+
+	contract, err := util.ToAccountName(contractName)
+	if err != nil {
+		return nil, err
+	}
+
+	action, err := util.ToActionName(actionName)
+	if err != nil {
+		return nil, err
+	}
+
+	pl, err := util.ToPermissionLevel(permissionLevel)
+	if err != nil {
+		return nil, err
+	}
+
 	switch v := data.(type) {
 	case nil:
 		actionData = eosc.NewActionDataFromHexData([]byte("{}"))
 	case map[string]interface{}:
-		actionBinary, err := m.API.ABIJSONToBin(context.Background(), eosc.AN(contract), eosc.Name(action), v)
+		actionBinary, err := m.API.ABIJSONToBin(context.Background(), contract, eosc.Name(action), v)
 		if err != nil {
 			return nil, fmt.Errorf("cannot pack action data for action: %v", err)
 		}
@@ -324,31 +380,10 @@ func (m *EOS) buildAction(contract, action string, permissionLevel interface{}, 
 		actionData = eosc.NewActionData(data)
 	}
 
-	pl, err := m.ParsePermissionLevel(permissionLevel)
-
-	if err != nil {
-		return nil, err
-	}
-
 	return &eosc.Action{
-		Account:       eosc.AN(contract),
-		Name:          eosc.ActN(action),
+		Account:       contract,
+		Name:          action,
 		Authorization: []eosc.PermissionLevel{pl},
 		ActionData:    actionData,
 	}, nil
-}
-
-func (m *EOS) ParsePermissionLevel(permissionLevel interface{}) (eosc.PermissionLevel, error) {
-	switch v := permissionLevel.(type) {
-	case eosc.PermissionLevel:
-		return v, nil
-	case eosc.AccountName, eosc.Name, string:
-		pl, err := eosc.NewPermissionLevel(fmt.Sprintf("%v", v))
-		if err != nil {
-			return pl, fmt.Errorf("unable to parse permission level: %v, error: %v", v, err)
-		}
-		return pl, nil
-	default:
-		return eosc.PermissionLevel{}, fmt.Errorf("unable to parse permission level: %v, of type: %t", v, v)
-	}
 }

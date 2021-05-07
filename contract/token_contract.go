@@ -1,12 +1,12 @@
 package contract
 
 import (
-	"fmt"
 	"strings"
 
 	eosc "github.com/eoscanada/eos-go"
 	"github.com/eoscanada/eos-go/token"
 	"github.com/sebastianmontero/eos-go-toolbox/service"
+	"github.com/sebastianmontero/eos-go-toolbox/util"
 )
 
 type TokenContract struct {
@@ -21,20 +21,26 @@ func NewTokenContract(eos *service.EOS) *TokenContract {
 	}
 }
 
-func (m *TokenContract) CreateToken(contract, issuer string, maxSupply eosc.Asset, failIfExists bool) (*eosc.PushTransactionFullResp, error) {
-	return m.CreateTokenT(eosc.AN(contract), eosc.AN(issuer), maxSupply, failIfExists)
-}
+func (m *TokenContract) CreateToken(contract, issuerName, maxSupply interface{}, failIfExists bool) (*eosc.PushTransactionFullResp, error) {
 
-func (m *TokenContract) CreateTokenT(contract, issuer eosc.AccountName, maxSupply eosc.Asset, failIfExists bool) (*eosc.PushTransactionFullResp, error) {
+	issuer, err := util.ToAccountName(issuerName)
+	if err != nil {
+		return nil, err
+	}
+
+	supply, err := util.ToAsset(maxSupply)
+	if err != nil {
+		return nil, err
+	}
 
 	data := token.Create{
 		Issuer:        issuer,
-		MaximumSupply: maxSupply,
+		MaximumSupply: supply,
 	}
-	return m.CreateTokenBase(string(contract), data, failIfExists)
+	return m.CreateTokenBase(contract, data, failIfExists)
 }
 
-func (m *TokenContract) CreateTokenBase(contract string, data interface{}, failIfExists bool) (*eosc.PushTransactionFullResp, error) {
+func (m *TokenContract) CreateTokenBase(contract, data interface{}, failIfExists bool) (*eosc.PushTransactionFullResp, error) {
 
 	resp, err := m.ExecActionC(contract, contract, "create", data)
 	if err != nil {
@@ -45,42 +51,51 @@ func (m *TokenContract) CreateTokenBase(contract string, data interface{}, failI
 	return resp, nil
 }
 
-func (m *TokenContract) Issue(contract, to, quantity, memo string) (*eosc.PushTransactionFullResp, error) {
-	qty, err := eosc.NewAssetFromString(quantity)
+func (m *TokenContract) Issue(contract, to, quantity interface{}, memo string) (*eosc.PushTransactionFullResp, error) {
+	toAN, err := util.ToAccountName(to)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse quantity, error: %v", err)
+		return nil, err
 	}
-	return m.IssueT(eosc.AN(contract), eosc.AN(to), qty, memo)
-}
 
-func (m *TokenContract) IssueT(contract, to eosc.AccountName, quantity eosc.Asset, memo string) (*eosc.PushTransactionFullResp, error) {
+	qty, err := util.ToAsset(quantity)
+	if err != nil {
+		return nil, err
+	}
+
 	data := token.Issue{
-		To:       to,
-		Quantity: quantity,
+		To:       toAN,
+		Quantity: qty,
 		Memo:     memo,
 	}
-	return m.ExecActionC(string(contract), string(contract), "issue", data)
+	return m.ExecActionC(contract, contract, "issue", data)
 }
 
-func (m *TokenContract) Transfer(contract, from, to, quantity, memo string) (*eosc.PushTransactionFullResp, error) {
-	qty, err := eosc.NewAssetFromString(quantity)
+func (m *TokenContract) Transfer(contract, from, to, quantity interface{}, memo string) (*eosc.PushTransactionFullResp, error) {
+
+	fromAN, err := util.ToAccountName(from)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse quantity, error: %v", err)
+		return nil, err
 	}
-	return m.TransferT(eosc.AN(contract), eosc.AN(from), eosc.AN(to), qty, memo)
-}
 
-func (m *TokenContract) TransferT(contract, from, to eosc.AccountName, quantity eosc.Asset, memo string) (*eosc.PushTransactionFullResp, error) {
+	toAN, err := util.ToAccountName(to)
+	if err != nil {
+		return nil, err
+	}
+
+	qty, err := util.ToAsset(quantity)
+	if err != nil {
+		return nil, err
+	}
 
 	data := token.Transfer{
-		From:     from,
-		To:       to,
-		Quantity: quantity,
+		From:     fromAN,
+		To:       toAN,
+		Quantity: qty,
 		Memo:     memo,
 	}
-	return m.ExecActionC(string(contract), string(from), "transfer", data)
+	return m.ExecActionC(contract, from, "transfer", data)
 }
 
-func (m *TokenContract) GetBalance(account eosc.AccountName, symbol eosc.Symbol, contract eosc.AccountName) (*eosc.Asset, error) {
+func (m *TokenContract) GetBalance(account, symbol, contract interface{}) (*eosc.Asset, error) {
 	return m.EOS.GetBalance(account, symbol, contract)
 }
