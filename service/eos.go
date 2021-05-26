@@ -352,6 +352,23 @@ func (m *EOS) GetBalance(accountName, symbol, contractName interface{}) (*eosc.A
 	return nil, nil
 }
 
+func (m *EOS) GetCurrencyStat(symbol, contractName interface{}) (*eosc.GetCurrencyStatsResp, error) {
+
+	contract, err := util.ToAccountName(contractName)
+	if err != nil {
+		return nil, err
+	}
+	sym, err := util.ToSymbol(symbol)
+	if err != nil {
+		return nil, err
+	}
+	stats, err := m.API.GetCurrencyStats(context.Background(), contract, sym.MustSymbolCode().String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get currency stat, error: %v", err)
+	}
+	return stats, nil
+}
+
 func (m *EOS) buildAction(contractName, actionName, permissionLevel, data interface{}) (*eosc.Action, error) {
 	var actionData eosc.ActionData
 

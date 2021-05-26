@@ -99,3 +99,7 @@ func (m *TokenContract) Transfer(contract, from, to, quantity interface{}, memo 
 func (m *TokenContract) GetBalance(account, symbol, contract interface{}) (*eosc.Asset, error) {
 	return m.EOS.GetBalance(account, symbol, contract)
 }
+
+func (m *TokenContract) GetStat(symbol, contract interface{}) (*eosc.GetCurrencyStatsResp, error) {
+	return m.EOS.GetCurrencyStat(symbol, contract)
+}
