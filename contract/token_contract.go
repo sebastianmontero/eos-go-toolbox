@@ -67,7 +67,7 @@ func (m *TokenContract) Issue(contract, to, quantity interface{}, memo string) (
 		Quantity: qty,
 		Memo:     memo,
 	}
-	return m.ExecActionC(contract, contract, "issue", data)
+	return m.ExecActionC(contract, to, "issue", data)
 }
 
 func (m *TokenContract) Transfer(contract, from, to, quantity interface{}, memo string) (*eosc.PushTransactionFullResp, error) {
