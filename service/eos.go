@@ -17,7 +17,8 @@ import (
 
 var EOSIOKey = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
 
-var retries = 3
+const retries = 5
+const retrySleep = 2
 
 type EOS struct {
 	API         *eosc.API
@@ -35,14 +36,33 @@ func NewEOS(api *eosc.API) *EOS {
 	}
 }
 
+func GetEOSIOKey() *ecc.PrivateKey {
+	key, _ := GetKey(EOSIOKey)
+	return key
+}
+
+func GetEOSIOPublicKey() *ecc.PublicKey {
+	key, _ := GetKey(EOSIOKey)
+	pubKey := key.PublicKey()
+	return &pubKey
+}
+
+func GetKey(privateKey string) (*ecc.PrivateKey, error) {
+	key, err := ecc.NewPrivateKey(privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed creating key for string key: %v, error: %v", privateKey, err)
+	}
+	return key, nil
+}
+
 func (m *EOS) AddKey(privateKey string) (*ecc.PublicKey, error) {
 	// logger.Infof("PKey: %v", pkey)
 	if m.API.Signer == nil {
 		m.API.SetSigner(&eosc.KeyBag{})
 	}
-	key, err := ecc.NewPrivateKey(privateKey)
+	key, err := GetKey(privateKey)
 	if err != nil {
-		return nil, fmt.Errorf("privateKey parameter is not a valid format: %s", err)
+		return nil, err
 	}
 	err = m.API.Signer.ImportPrivateKey(context.Background(), privateKey)
 	if err != nil {
@@ -68,7 +88,7 @@ func (m *EOS) Trx(retries int, actions ...*eosc.Action) (*eosc.PushTransactionFu
 	if err != nil {
 		if retries > 0 {
 			if isRetryableError(err) {
-				time.Sleep(3 * time.Second)
+				time.Sleep(time.Duration(retrySleep) * time.Second)
 				return m.Trx(retries-1, actions...)
 			}
 		}
@@ -80,11 +100,14 @@ func (m *EOS) Trx(retries int, actions ...*eosc.Action) (*eosc.PushTransactionFu
 func isRetryableError(err error) bool {
 	errMsg := err.Error()
 	return strings.Contains(errMsg, "connection reset by peer") ||
-		strings.Contains(errMsg, "Transaction took too long")
+		strings.Contains(errMsg, "Transaction took too long") ||
+		strings.Contains(errMsg, "exceeded the current CPU usage limit") ||
+		strings.Contains(errMsg, "ABI serialization time has exceeded")
+
 }
 
 func (m *EOS) SimpleTrx(contract, actionName, permissionLevel, data interface{}) (*eosc.PushTransactionFullResp, error) {
-	action, err := m.buildAction(contract, actionName, permissionLevel, data)
+	action, err := m.buildAction(contract, actionName, permissionLevel, data, retries)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +119,7 @@ func (m *EOS) DebugTrx(contract, actionName, permissionLevel, data interface{}) 
 	if err := txOpts.FillFromChain(context.Background(), m.API); err != nil {
 		return nil, err
 	}
-	action, err := m.buildAction(contract, actionName, permissionLevel, data)
+	action, err := m.buildAction(contract, actionName, permissionLevel, data, retries)
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +160,14 @@ func (m *EOS) CreateAccount(accountName interface{}, publicKey *ecc.PublicKey, f
 		}
 	}
 	return account, nil
+}
+
+func (m *EOS) CreateRandomAccount(publicKey *ecc.PublicKey) (eosc.AccountName, error) {
+
+	if publicKey == nil {
+		publicKey = GetEOSIOPublicKey()
+	}
+	return m.CreateAccount(util.RandAccountName(), publicKey, true)
 }
 
 func (m *EOS) GetAccount(accountName interface{}) (*eosc.AccountResp, error) {
@@ -276,10 +307,20 @@ func (m *EOS) LinkPermission(accountName, actionName, permissionName interface{}
 }
 
 func (m *EOS) GetTableRows(request eosc.GetTableRowsRequest, rows interface{}) error {
+	return m.GetTableRowsRetries(request, rows, retries)
+}
+
+func (m *EOS) GetTableRowsRetries(request eosc.GetTableRowsRequest, rows interface{}, retries int) error {
 
 	request.JSON = true
 	response, err := m.API.GetTableRows(context.Background(), request)
 	if err != nil {
+		if retries > 0 {
+			if isRetryableError(err) {
+				time.Sleep(time.Duration(retrySleep) * time.Second)
+				return m.GetTableRowsRetries(request, rows, retries-1)
+			}
+		}
 		return fmt.Errorf("get table rows %v", err)
 	}
 
@@ -369,7 +410,7 @@ func (m *EOS) GetCurrencyStat(symbol, contractName interface{}) (*eosc.GetCurren
 	return stats, nil
 }
 
-func (m *EOS) buildAction(contractName, actionName, permissionLevel, data interface{}) (*eosc.Action, error) {
+func (m *EOS) buildAction(contractName, actionName, permissionLevel, data interface{}, retries int) (*eosc.Action, error) {
 	var actionData eosc.ActionData
 
 	contract, err := util.ToAccountName(contractName)
@@ -393,6 +434,12 @@ func (m *EOS) buildAction(contractName, actionName, permissionLevel, data interf
 	case map[string]interface{}:
 		actionBinary, err := m.API.ABIJSONToBin(context.Background(), contract, eosc.Name(action), v)
 		if err != nil {
+			if retries > 0 {
+				if isRetryableError(err) {
+					time.Sleep(time.Duration(retrySleep) * time.Second)
+					return m.buildAction(contractName, actionName, permissionLevel, data, retries-1)
+				}
+			}
 			return nil, fmt.Errorf("cannot pack action data for action: %v", err)
 		}
 		actionData = eosc.NewActionDataFromHexData([]byte(actionBinary))

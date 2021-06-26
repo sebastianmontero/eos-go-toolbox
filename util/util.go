@@ -2,10 +2,16 @@ package util
 
 import (
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/eoscanada/eos-go"
 )
+
+const charset = "abcdefghijklmnopqrstuvwxyz" + "12345"
+
+var seededRand *rand.Rand = rand.New(
+	rand.NewSource(time.Now().UnixNano()))
 
 func MultiplyAsset(asset eos.Asset, times int64) eos.Asset {
 	total := eos.Int64(int64(asset.Amount) * times)
@@ -108,4 +114,16 @@ func ToPermissionLevel(permissionLevel interface{}) (eos.PermissionLevel, error)
 	default:
 		return eos.PermissionLevel{}, fmt.Errorf("unable to parse permission level: %v, of type: %t", v, v)
 	}
+}
+
+func StringWithCharset(length int, charset string) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset))]
+	}
+	return string(b)
+}
+
+func RandAccountName() string {
+	return StringWithCharset(12, charset)
 }
