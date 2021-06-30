@@ -17,7 +17,7 @@ import (
 
 var EOSIOKey = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
 
-const retries = 5
+const retries = 10
 const retrySleep = 2
 
 type EOS struct {
@@ -99,6 +99,7 @@ func (m *EOS) Trx(retries int, actions ...*eosc.Action) (*eosc.PushTransactionFu
 
 func isRetryableError(err error) bool {
 	errMsg := err.Error()
+	// fmt.Println("Error: ", errMsg)
 	return strings.Contains(errMsg, "connection reset by peer") ||
 		strings.Contains(errMsg, "Transaction took too long") ||
 		strings.Contains(errMsg, "exceeded the current CPU usage limit") ||
