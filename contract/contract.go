@@ -22,6 +22,9 @@
 package contract
 
 import (
+	"fmt"
+	"time"
+
 	eos "github.com/eoscanada/eos-go"
 	"github.com/sebastianmontero/eos-go-toolbox/service"
 )
@@ -38,6 +41,14 @@ func (m *Contract) ExecActionC(contract, permissionLevel, action, data interface
 
 func (m *Contract) ExecAction(permissionLevel, action, data interface{}) (*eos.PushTransactionFullResp, error) {
 	return m.ExecActionC(m.ContractName, permissionLevel, action, data)
+}
+
+func (m *Contract) ProposeAction(proposerName interface{}, requested []eos.PermissionLevel, expireIn time.Duration, permissionLevel, actionName, data interface{}) (*service.ProposeResponse, error) {
+	action, err := m.EOS.BuildAction(m.ContractName, actionName, permissionLevel, data, 5)
+	if err != nil {
+		return nil, fmt.Errorf("failed proposing multisig action, error building action: %v", err)
+	}
+	return m.EOS.ProposeMultiSig(proposerName, requested, expireIn, action)
 }
 
 func (m *Contract) GetTableRows(request eos.GetTableRowsRequest, rows interface{}) error {

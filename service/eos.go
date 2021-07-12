@@ -9,8 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/eoscanada/eos-go"
 	eosc "github.com/eoscanada/eos-go"
 	"github.com/eoscanada/eos-go/ecc"
+	"github.com/eoscanada/eos-go/msig"
 	"github.com/eoscanada/eos-go/system"
 	"github.com/sebastianmontero/eos-go-toolbox/util"
 )
@@ -19,6 +21,11 @@ var EOSIOKey = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
 
 const retries = 10
 const retrySleep = 2
+
+type ProposeResponse struct {
+	*eosc.PushTransactionFullResp
+	ProposalName eosc.Name
+}
 
 type EOS struct {
 	API         *eosc.API
@@ -108,7 +115,7 @@ func isRetryableError(err error) bool {
 }
 
 func (m *EOS) SimpleTrx(contract, actionName, permissionLevel, data interface{}) (*eosc.PushTransactionFullResp, error) {
-	action, err := m.buildAction(contract, actionName, permissionLevel, data, retries)
+	action, err := m.BuildAction(contract, actionName, permissionLevel, data, retries)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +127,7 @@ func (m *EOS) DebugTrx(contract, actionName, permissionLevel, data interface{}) 
 	if err := txOpts.FillFromChain(context.Background(), m.API); err != nil {
 		return nil, err
 	}
-	action, err := m.buildAction(contract, actionName, permissionLevel, data, retries)
+	action, err := m.BuildAction(contract, actionName, permissionLevel, data, retries)
 	if err != nil {
 		return nil, err
 	}
@@ -138,6 +145,18 @@ func (m *EOS) DebugTrx(contract, actionName, permissionLevel, data interface{}) 
 
 	fmt.Println(string(content))
 	return m.API.PushTransaction(context.Background(), packedTx)
+}
+
+func (m *EOS) BuildTrx(expireIn time.Duration, actions ...*eosc.Action) (*eosc.Transaction, error) {
+	txOpts := &eosc.TxOptions{}
+	if err := txOpts.FillFromChain(context.Background(), m.API); err != nil {
+		return nil, fmt.Errorf("failed getting txOptions to build trx, error: %v", err)
+	}
+	tx := eosc.NewTransaction(actions, txOpts)
+	if expireIn > 0 {
+		tx.SetExpiration(expireIn)
+	}
+	return tx, nil
 }
 
 func (m *EOS) CreateAccount(accountName interface{}, publicKey *ecc.PublicKey, failIfExists bool) (eosc.AccountName, error) {
@@ -215,6 +234,27 @@ func (m *EOS) SetContract(accountName interface{}, wasmFile, abiFile string, pub
 		}
 	}
 	return resp, nil
+}
+
+func (m *EOS) GetSetContractActions(accountName interface{}, wasmFile, abiFile string) ([]*eosc.Action, error) {
+
+	account, err := util.ToAccountName(accountName)
+	if err != nil {
+		return nil, err
+	}
+	setCodeAction, err := system.NewSetCode(account, wasmFile)
+	if err != nil {
+		return nil, fmt.Errorf("unable construct set_code action: %v", err)
+	}
+
+	setAbiAction, err := system.NewSetABI(account, abiFile)
+	if err != nil {
+		return nil, fmt.Errorf("unable construct set_abi action: %v", err)
+	}
+	return []*eos.Action{
+		setCodeAction,
+		setAbiAction,
+	}, nil
 }
 
 func (m *EOS) SetEOSIOCode(accountName interface{}, publicKey *ecc.PublicKey) error {
@@ -411,7 +451,7 @@ func (m *EOS) GetCurrencyStat(symbol, contractName interface{}) (*eosc.GetCurren
 	return stats, nil
 }
 
-func (m *EOS) buildAction(contractName, actionName, permissionLevel, data interface{}, retries int) (*eosc.Action, error) {
+func (m *EOS) BuildAction(contractName, actionName, permissionLevel, data interface{}, retries int) (*eosc.Action, error) {
 	var actionData eosc.ActionData
 
 	contract, err := util.ToAccountName(contractName)
@@ -438,7 +478,7 @@ func (m *EOS) buildAction(contractName, actionName, permissionLevel, data interf
 			if retries > 0 {
 				if isRetryableError(err) {
 					time.Sleep(time.Duration(retrySleep) * time.Second)
-					return m.buildAction(contractName, actionName, permissionLevel, data, retries-1)
+					return m.BuildAction(contractName, actionName, permissionLevel, data, retries-1)
 				}
 			}
 			return nil, fmt.Errorf("cannot pack action data for action: %v", err)
@@ -455,4 +495,76 @@ func (m *EOS) buildAction(contractName, actionName, permissionLevel, data interf
 		Authorization: []eosc.PermissionLevel{pl},
 		ActionData:    actionData,
 	}, nil
+}
+
+func (m *EOS) ProposeMultiSig(proposerName interface{}, requested []eosc.PermissionLevel, expireIn time.Duration, actions ...*eos.Action) (*ProposeResponse, error) {
+	proposer, err := util.ToAccountName(proposerName)
+	if err != nil {
+		return nil, err
+	}
+	proposalName := eosc.Name(util.RandAccountName())
+	transaction, err := m.BuildTrx(expireIn, actions...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to propose multi sig, unable to build transaction, err: %v", err)
+	}
+	proposeAction := msig.NewPropose(proposer, proposalName, requested, transaction)
+	resp, err := m.Trx(retries, proposeAction)
+	if err != nil {
+		return nil, fmt.Errorf("failed pushing propose transaction, error: %v", err)
+	}
+	return &ProposeResponse{
+		ProposalName:            proposalName,
+		PushTransactionFullResp: resp,
+	}, nil
+}
+
+func (m *EOS) ApproveMultiSig(proposerName interface{}, proposalName interface{}, permissionLevel eosc.PermissionLevel) (*eosc.PushTransactionFullResp, error) {
+	proposer, err := util.ToAccountName(proposerName)
+	if err != nil {
+		return nil, err
+	}
+	proposal, err := util.ToName(proposalName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to approve multi sig, invalid proposal name, err: %v", err)
+	}
+
+	approveAction := msig.NewApprove(proposer, proposal, permissionLevel)
+	resp, err := m.Trx(retries, approveAction)
+	if err != nil {
+		return nil, fmt.Errorf("failed pushing approve transaction, error: %v", err)
+	}
+	return resp, nil
+}
+
+func (m *EOS) ExecuteMultiSig(proposerName interface{}, proposalName interface{}, executerName interface{}) (*eosc.PushTransactionFullResp, error) {
+	proposer, err := util.ToAccountName(proposerName)
+	if err != nil {
+		return nil, err
+	}
+	proposal, err := util.ToName(proposalName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to approve multi sig, invalid proposal name, err: %v", err)
+	}
+
+	executer, err := util.ToAccountName(executerName)
+	if err != nil {
+		return nil, err
+	}
+
+	execAction := msig.NewExec(proposer, proposal, executer)
+	resp, err := m.Trx(retries, execAction)
+	if err != nil {
+		return nil, fmt.Errorf("failed pushing exec transaction, error: %v", err)
+	}
+	return resp, nil
+}
+
+func (m *EOS) ProposeSetContractMultiSig(proposerName interface{}, requested []eosc.PermissionLevel, expireIn time.Duration, accountName interface{}, wasmFile, abiFile string) (*ProposeResponse, error) {
+
+	actions, err := m.GetSetContractActions(accountName, wasmFile, abiFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed building set contract actions, error: %v", err)
+	}
+	return m.ProposeMultiSig(proposerName, requested, expireIn, actions...)
+
 }
