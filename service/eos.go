@@ -325,7 +325,7 @@ func (m *EOS) CreateSimplePermission(accountName, newPermissionName interface{},
 	return nil
 }
 
-func (m *EOS) LinkPermission(accountName, actionName, permissionName interface{}) error {
+func (m *EOS) LinkPermission(accountName, actionName, permissionName interface{}, failIfExists bool) error {
 	acct, err := util.ToAccountName(accountName)
 	if err != nil {
 		return err
@@ -342,7 +342,9 @@ func (m *EOS) LinkPermission(accountName, actionName, permissionName interface{}
 	linkAction := system.NewLinkAuth(acct, acct, action, eosc.PermissionName(permission))
 	_, err = m.Trx(retries, linkAction)
 	if err != nil {
-		return fmt.Errorf("error linking permission: %v, to action %v:%v, error: %v", permission, acct, action, err)
+		if failIfExists || !strings.Contains(err.Error(), "new requirement is same as old") {
+			return fmt.Errorf("error linking permission: %v, to action %v:%v, error: %v", permission, acct, action, err)
+		}
 	}
 	return nil
 }
