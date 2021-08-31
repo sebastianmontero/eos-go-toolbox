@@ -257,35 +257,107 @@ func (m *EOS) GetSetContractActions(accountName interface{}, wasmFile, abiFile s
 	}, nil
 }
 
-func (m *EOS) SetEOSIOCode(accountName interface{}, publicKey *ecc.PublicKey) error {
+func (m *EOS) GetAccountPermission(accountName interface{}, permissionName string) (*eos.Permission, error) {
+	account, err := m.GetAccount(accountName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get account object for name: %v, error: %v", accountName, err)
+	}
+	for _, permission := range account.Permissions {
+		if permission.PermName == permissionName {
+			return &permission, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *EOS) SetEOSIOCode(accountName interface{}) (bool, error) {
+
+	codePermissionAction, err := m.GetSetEOSIOCodeAction(accountName)
+	if err != nil {
+		return false, fmt.Errorf("failed setting eosio.code permission for account: %v, error: %v", accountName, err)
+	}
+	if codePermissionAction != nil {
+		_, err = m.Trx(retries, codePermissionAction)
+		if err != nil {
+			return false, fmt.Errorf("error setting eosio.code permission for account: %v, error: %v", accountName, err)
+		}
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
+func (m *EOS) ProposeSetEOSIOCode(proposerName interface{}, requested []eosc.PermissionLevel, expireIn time.Duration, accountName interface{}) (*ProposeResponse, error) {
+
+	codePermissionAction, err := m.GetSetEOSIOCodeAction(accountName)
+	if err != nil {
+		return nil, fmt.Errorf("failed proposing set eosio.code permission for account: %v, error: %v", accountName, err)
+	}
+	if codePermissionAction != nil {
+		response, err := m.ProposeMultiSig(proposerName, requested, expireIn, codePermissionAction)
+		if err != nil {
+			return nil, fmt.Errorf("error proposing set eosio.code permission for account: %v, error: %v", accountName, err)
+		}
+		return response, nil
+	} else {
+		return nil, nil
+	}
+}
+
+func (m *EOS) GetSetEOSIOCodeAction(accountName interface{}) (*eosc.Action, error) {
+
 	acct, err := util.ToAccountName(accountName)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	permission, err := m.GetAccountPermission(accountName, "active")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get active permission for account: %v, error: %v", accountName, err)
+	}
+	accountAuthorityPos, err := FindAccountAuthority(permission, acct, "eosio.code")
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if eosio.code is already set, error: %v", err)
+	}
+	authority := permission.RequiredAuth
+	if accountAuthorityPos != -1 {
+		accountAuthority := &authority.Accounts[accountAuthorityPos]
+		if accountAuthority.Weight == uint16(permission.RequiredAuth.Threshold) {
+			return nil, nil
+		}
+		accountAuthority.Weight = uint16(permission.RequiredAuth.Threshold)
+	} else {
+		authority.Accounts = append(authority.Accounts, eosc.PermissionLevelWeight{
+			Permission: eosc.PermissionLevel{
+				Actor:      acct,
+				Permission: "eosio.code",
+			},
+			Weight: uint16(permission.RequiredAuth.Threshold),
+		})
 	}
 	codePermissionAction := system.NewUpdateAuth(acct,
 		"active",
 		"owner",
-		eosc.Authority{
-			Threshold: 1,
-			Keys: []eosc.KeyWeight{{
-				PublicKey: *publicKey,
-				Weight:    1,
-			}},
-			Accounts: []eosc.PermissionLevelWeight{{
-				Permission: eosc.PermissionLevel{
-					Actor:      acct,
-					Permission: "eosio.code",
-				},
-				Weight: 1,
-			}},
-			Waits: []eosc.WaitWeight{},
-		}, "owner")
+		authority,
+		"owner")
+	return codePermissionAction, nil
+}
 
-	_, err = m.Trx(retries, codePermissionAction)
+func FindAccountAuthority(permission *eosc.Permission, accountName, permissionName interface{}) (int, error) {
+	acct, err := util.ToAccountName(accountName)
 	if err != nil {
-		return fmt.Errorf("error setting eosio.code permission for account: %v, error: %v", accountName, err)
+		return -1, err
 	}
-	return nil
+	permName, err := util.ToPermissionName(permissionName)
+	if err != nil {
+		return -1, err
+	}
+	for i, account := range permission.RequiredAuth.Accounts {
+		if account.Permission.Actor == acct && account.Permission.Permission == permName {
+			return i, nil
+		}
+	}
+	return -1, nil
 }
 
 func (m *EOS) CreateSimplePermission(accountName, newPermissionName interface{}, publicKey *ecc.PublicKey) error {
