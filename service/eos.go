@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/eoscanada/eos-go"
 	eosc "github.com/eoscanada/eos-go"
 	"github.com/eoscanada/eos-go/ecc"
 	"github.com/eoscanada/eos-go/msig"
@@ -251,13 +250,13 @@ func (m *EOS) GetSetContractActions(accountName interface{}, wasmFile, abiFile s
 	if err != nil {
 		return nil, fmt.Errorf("unable construct set_abi action: %v", err)
 	}
-	return []*eos.Action{
+	return []*eosc.Action{
 		setCodeAction,
 		setAbiAction,
 	}, nil
 }
 
-func (m *EOS) GetAccountPermission(accountName interface{}, permissionName string) (*eos.Permission, error) {
+func (m *EOS) GetAccountPermission(accountName interface{}, permissionName string) (*eosc.Permission, error) {
 	account, err := m.GetAccount(accountName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get account object for name: %v, error: %v", accountName, err)
@@ -468,7 +467,7 @@ func (m *EOS) GetComposedIndexValue(firstValue interface{}, secondValue interfac
 func (m *EOS) getUInt64Value(value interface{}) (uint64, error) {
 
 	switch v := value.(type) {
-	case string, eosc.Name:
+	case string, eosc.Name, eosc.AccountName:
 		vUint64, err := eosc.StringToName(fmt.Sprintf("%v", v))
 		if err != nil {
 			return 0, fmt.Errorf("failed to convert status to uint64, err: %v", err)
@@ -571,7 +570,7 @@ func (m *EOS) BuildAction(contractName, actionName, permissionLevel, data interf
 	}, nil
 }
 
-func (m *EOS) ProposeMultiSig(proposerName interface{}, requested []eosc.PermissionLevel, expireIn time.Duration, actions ...*eos.Action) (*ProposeResponse, error) {
+func (m *EOS) ProposeMultiSig(proposerName interface{}, requested []eosc.PermissionLevel, expireIn time.Duration, actions ...*eosc.Action) (*ProposeResponse, error) {
 	proposer, err := util.ToAccountName(proposerName)
 	if err != nil {
 		return nil, err
