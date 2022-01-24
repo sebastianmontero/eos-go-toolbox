@@ -64,3 +64,15 @@ func (m *Contract) GetTableRows(request eos.GetTableRowsRequest, rows interface{
 	}
 	return m.EOS.GetTableRows(request, rows)
 }
+
+func (m *Contract) GetTableScopes(request eos.GetTableByScopeRequest) (*service.TableScopesResp, error) {
+
+	if request.Code == "" {
+		request.Code = string(m.ContractName)
+	}
+
+	if request.Limit == 0 {
+		request.Limit = 100
+	}
+	return m.EOS.GetTableScopes(request)
+}

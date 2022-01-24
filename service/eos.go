@@ -21,6 +21,19 @@ var EOSIOKey = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
 const retries = 10
 const retrySleep = 2
 
+type TableScope struct {
+	Code  string `json:"code"`
+	Scope string `json:"scope"`
+	Table string `json:"table"`
+	Payer string `json:"payer"`
+	Count uint64 `json:"count"`
+}
+
+type TableScopesResp struct {
+	More   string
+	Scopes []*TableScope
+}
+
 type ProposeResponse struct {
 	*eosc.PushTransactionFullResp
 	ProposalName eosc.Name
@@ -443,6 +456,34 @@ func (m *EOS) GetTableRowsRetries(request eosc.GetTableRowsRequest, rows interfa
 		return fmt.Errorf("json to structs %v", err)
 	}
 	return nil
+}
+
+func (m *EOS) GetTableScopes(request eosc.GetTableByScopeRequest) (*TableScopesResp, error) {
+	return m.GetTableScopesRetries(request, retries)
+}
+
+func (m *EOS) GetTableScopesRetries(request eosc.GetTableByScopeRequest, retries int) (*TableScopesResp, error) {
+
+	response, err := m.API.GetTableByScope(context.Background(), request)
+	if err != nil {
+		if retries > 0 {
+			if isRetryableError(err) {
+				time.Sleep(time.Duration(retrySleep) * time.Second)
+				return m.GetTableScopesRetries(request, retries-1)
+			}
+		}
+		return nil, fmt.Errorf("get table scopes %v", err)
+	}
+	var scopes []*TableScope
+
+	err = json.Unmarshal(response.Rows, &scopes)
+	if err != nil {
+		return nil, fmt.Errorf("json to structs %v", err)
+	}
+	return &TableScopesResp{
+		More:   response.More,
+		Scopes: scopes,
+	}, nil
 }
 
 func (m *EOS) GetComposedIndexValue(firstValue interface{}, secondValue interface{}) (string, error) {
