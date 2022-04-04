@@ -1,0 +1,268 @@
+// The MIT License (MIT)
+
+// Copyright (c) 2020, Digital Scarcity
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+package contract
+
+import (
+	"fmt"
+	"time"
+
+	eos "github.com/eoscanada/eos-go"
+	"github.com/sebastianmontero/eos-go-toolbox/dto"
+	"github.com/sebastianmontero/eos-go-toolbox/service"
+)
+
+type Setting struct {
+	ID          uint64             `json:"id"`
+	Key         string             `json:"key"`
+	Values      []*dto.FlexValue   `json:"values"`
+	CreatedDate eos.BlockTimestamp `json:"created_date"`
+	UpdatedDate eos.BlockTimestamp `json:"updated_date"`
+}
+
+func (m *Setting) ValueCount() int {
+	return len(m.Values)
+}
+
+func (m *Setting) Get(pos int) (*dto.FlexValue, error) {
+	if pos < m.ValueCount() {
+		return m.Values[0], nil
+	}
+	return nil, fmt.Errorf("setting has no value at pos: %v, value count: %v", pos, m.ValueCount())
+}
+
+func (m *Setting) GetAsName(pos int) (eos.Name, error) {
+	v, err := m.Get(pos)
+	if err != nil {
+		return eos.Name(""), err
+	}
+	return v.Name(), nil
+}
+
+func (m *Setting) GetAsString(pos int) (string, error) {
+	v, err := m.Get(pos)
+	if err != nil {
+		return "", err
+	}
+	return v.String(), nil
+}
+
+func (m *Setting) GetAsTimePoint(pos int) (eos.TimePoint, error) {
+	v, err := m.Get(pos)
+	if err != nil {
+		return eos.TimePoint(0), err
+	}
+	return v.TimePoint(), nil
+}
+
+func (m *Setting) GetAsAsset(pos int) (eos.Asset, error) {
+	v, err := m.Get(pos)
+	if err != nil {
+		return eos.Asset{}, err
+	}
+	return v.Asset(), nil
+}
+
+func (m *Setting) GetAsInt64(pos int) (int64, error) {
+	v, err := m.Get(pos)
+	if err != nil {
+		return 0, err
+	}
+	return v.Int64(), nil
+}
+
+type SettingsContract struct {
+	*Contract
+}
+
+func NewSettingsContract(eos *service.EOS, contractName string) *SettingsContract {
+	return &SettingsContract{
+		&Contract{
+			EOS:          eos,
+			ContractName: contractName,
+		},
+	}
+}
+
+func (m *SettingsContract) setter(owner eos.AccountName,
+	key string, flexValue *dto.FlexValue, action eos.ActionName) (*service.PushTransactionFullResp, error) {
+	actionData := m.getSetterData(owner, key, flexValue)
+	return m.ExecAction(string(owner), string(action), actionData)
+}
+
+func (m *SettingsContract) proposeSetter(proposerName interface{}, requested []eos.PermissionLevel, expireIn time.Duration, owner eos.AccountName,
+	key string, flexValue *dto.FlexValue, action eos.ActionName) (*service.ProposeResponse, error) {
+	actionData := m.getSetterData(owner, key, flexValue)
+	return m.ProposeAction(proposerName, requested, expireIn, string(owner), string(action), actionData)
+}
+
+func (m *SettingsContract) getSetterData(owner eos.AccountName,
+	key string, flexValue *dto.FlexValue) map[string]interface{} {
+	actionData := make(map[string]interface{})
+	actionData["setter"] = owner
+	actionData["key"] = key
+	actionData["value"] = flexValue
+	return actionData
+}
+
+func (m *SettingsContract) SetSetting(owner eos.AccountName,
+	key string, flexValue *dto.FlexValue) (*service.PushTransactionFullResp, error) {
+
+	return m.setter(owner, key, flexValue, eos.ActN("setsetting"))
+}
+
+func (m *SettingsContract) ProposeSetSetting(proposerName interface{}, requested []eos.PermissionLevel, expireIn time.Duration, owner eos.AccountName,
+	key string, flexValue *dto.FlexValue) (*service.ProposeResponse, error) {
+
+	return m.proposeSetter(proposerName, requested, expireIn, owner, key, flexValue, eos.ActN("setsetting"))
+}
+
+func (m *SettingsContract) AppendSetting(owner eos.AccountName,
+	key string, flexValue *dto.FlexValue) (*service.PushTransactionFullResp, error) {
+
+	return m.setter(owner, key, flexValue, eos.ActN("appndsetting"))
+}
+
+func (m *SettingsContract) ProposeAppendSetting(proposerName interface{}, requested []eos.PermissionLevel, expireIn time.Duration, owner eos.AccountName,
+	key string, flexValue *dto.FlexValue) (*service.ProposeResponse, error) {
+
+	return m.proposeSetter(proposerName, requested, expireIn, owner, key, flexValue, eos.ActN("appndsetting"))
+}
+
+func (m *SettingsContract) ClipSetting(owner eos.AccountName,
+	key string, flexValue *dto.FlexValue) (*service.PushTransactionFullResp, error) {
+
+	return m.setter(owner, key, flexValue, eos.ActN("clipsetting"))
+}
+
+func (m *SettingsContract) ProposeClipSetting(proposerName interface{}, requested []eos.PermissionLevel, expireIn time.Duration, owner eos.AccountName,
+	key string, flexValue *dto.FlexValue) (*service.ProposeResponse, error) {
+
+	return m.proposeSetter(proposerName, requested, expireIn, owner, key, flexValue, eos.ActN("clipsetting"))
+}
+
+func (m *SettingsContract) EraseSetting(owner eos.AccountName, key string) (*service.PushTransactionFullResp, error) {
+
+	actionData := make(map[string]interface{})
+	actionData["setter"] = owner
+	actionData["key"] = key
+
+	return m.ExecAction(owner, "erasesetting", actionData)
+}
+
+func (m *SettingsContract) ProposeEraseSetting(proposerName interface{}, requested []eos.PermissionLevel, expireIn time.Duration, owner eos.AccountName,
+	key string) (*service.ProposeResponse, error) {
+
+	actionData := make(map[string]interface{})
+	actionData["setter"] = owner
+	actionData["key"] = key
+	return m.ProposeAction(proposerName, requested, expireIn, string(owner), "erasesetting", actionData)
+}
+
+func (m *SettingsContract) GetSettings() ([]Setting, error) {
+	return m.GetSettingsReq(nil)
+}
+
+func (m *SettingsContract) GetSetting(key string) (*Setting, error) {
+	settings, err := m.GetSettings()
+	if err != nil {
+		return nil, err
+	}
+	for _, setting := range settings {
+		if setting.Key == key {
+			return &setting, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *SettingsContract) GetSettingsReq(req *eos.GetTableRowsRequest) ([]Setting, error) {
+
+	var settings []Setting
+	if req == nil {
+		req = &eos.GetTableRowsRequest{}
+	}
+	req.Table = "settings"
+	err := m.GetTableRows(*req, &settings)
+	if err != nil {
+		return nil, fmt.Errorf("get table rows %v", err)
+	}
+	return settings, nil
+}
+
+func (m *SettingsContract) SetupConfigSettings(owner eos.AccountName, settings interface{}) error {
+	for _, value := range settings.([]interface{}) {
+		err := m.SetupConfigSetting(owner, value.(map[interface{}]interface{}))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *SettingsContract) SetupConfigSetting(owner eos.AccountName, configSetting map[interface{}]interface{}) error {
+
+	setting, err := GetConfigSetting(configSetting)
+	if err != nil {
+		return err
+	}
+	_, err = m.SetSetting(owner, setting.Key, setting.Values[0])
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *SettingsContract) ProposeConfigSettings(proposerName interface{}, requested []eos.PermissionLevel, expireIn time.Duration, owner eos.AccountName, settings interface{}) error {
+	for _, value := range settings.([]interface{}) {
+		err := m.ProposeConfigSetting(proposerName, requested, expireIn, owner, value.(map[interface{}]interface{}))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *SettingsContract) ProposeConfigSetting(proposerName interface{}, requested []eos.PermissionLevel, expireIn time.Duration, owner eos.AccountName, configSetting map[interface{}]interface{}) error {
+
+	setting, err := GetConfigSetting(configSetting)
+	if err != nil {
+		return err
+	}
+	_, err = m.ProposeSetSetting(proposerName, requested, expireIn, owner, setting.Key, setting.Values[0])
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GetConfigSetting(setting map[interface{}]interface{}) (*Setting, error) {
+
+	fv := dto.NewFlexValue(setting["type"].(string), setting["value"].(string))
+	return &Setting{
+		Key: setting["key"].(string),
+		Values: []*dto.FlexValue{
+			fv,
+		},
+	}, nil
+}

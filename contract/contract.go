@@ -35,11 +35,15 @@ type Contract struct {
 }
 
 //ExecActionC Accepts contract name on which to execute the action
-func (m *Contract) ExecActionC(contract, permissionLevel, action, data interface{}) (*eos.PushTransactionFullResp, error) {
-	return m.EOS.SimpleTrx(contract, action, permissionLevel, data)
+func (m *Contract) ExecActionC(contract, permissionLevel, action, data interface{}) (*service.PushTransactionFullResp, error) {
+	resp, err := m.EOS.SimpleTrx(contract, action, permissionLevel, data)
+	if err != nil {
+		return nil, err
+	}
+	return &service.PushTransactionFullResp{PushTransactionFullResp: resp}, nil
 }
 
-func (m *Contract) ExecAction(permissionLevel, action, data interface{}) (*eos.PushTransactionFullResp, error) {
+func (m *Contract) ExecAction(permissionLevel, action, data interface{}) (*service.PushTransactionFullResp, error) {
 	return m.ExecActionC(m.ContractName, permissionLevel, action, data)
 }
 

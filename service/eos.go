@@ -34,9 +34,21 @@ type TableScopesResp struct {
 	Scopes []*TableScope
 }
 
+type PushTransactionFullResp struct {
+	*eosc.PushTransactionFullResp
+}
+
+func (m *PushTransactionFullResp) String() string {
+	return fmt.Sprintf("TransactionID: %v\n", m.TransactionID)
+}
+
 type ProposeResponse struct {
 	*eosc.PushTransactionFullResp
 	ProposalName eosc.Name
+}
+
+func (m *ProposeResponse) String() string {
+	return fmt.Sprintf("ProposalName: %v %v", m.ProposalName, m.PushTransactionFullResp)
 }
 
 type EOS struct {
@@ -143,7 +155,7 @@ func (m *EOS) DebugTrx(contract, actionName, permissionLevel, data interface{}) 
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Println("Action Data: ", action.ActionData.Data)
 	tx := eosc.NewTransaction([]*eosc.Action{action}, txOpts)
 	signedTx, packedTx, err := m.API.SignTransaction(context.Background(), tx, txOpts.ChainID, eosc.CompressionNone)
 	if err != nil {

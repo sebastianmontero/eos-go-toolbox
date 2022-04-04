@@ -21,7 +21,7 @@ func NewTokenContract(eos *service.EOS) *TokenContract {
 	}
 }
 
-func (m *TokenContract) CreateToken(contract, issuerName, maxSupply interface{}, failIfExists bool) (*eosc.PushTransactionFullResp, error) {
+func (m *TokenContract) CreateToken(contract, issuerName, maxSupply interface{}, failIfExists bool) (*service.PushTransactionFullResp, error) {
 
 	issuer, err := util.ToAccountName(issuerName)
 	if err != nil {
@@ -40,7 +40,7 @@ func (m *TokenContract) CreateToken(contract, issuerName, maxSupply interface{},
 	return m.CreateTokenBase(contract, data, failIfExists)
 }
 
-func (m *TokenContract) CreateTokenBase(contract, data interface{}, failIfExists bool) (*eosc.PushTransactionFullResp, error) {
+func (m *TokenContract) CreateTokenBase(contract, data interface{}, failIfExists bool) (*service.PushTransactionFullResp, error) {
 
 	resp, err := m.ExecActionC(contract, contract, "create", data)
 	if err != nil {
@@ -51,7 +51,7 @@ func (m *TokenContract) CreateTokenBase(contract, data interface{}, failIfExists
 	return resp, nil
 }
 
-func (m *TokenContract) Issue(contract, to, quantity interface{}, memo string) (*eosc.PushTransactionFullResp, error) {
+func (m *TokenContract) Issue(contract, to, quantity interface{}, memo string) (*service.PushTransactionFullResp, error) {
 	toAN, err := util.ToAccountName(to)
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (m *TokenContract) Issue(contract, to, quantity interface{}, memo string) (
 	return m.ExecActionC(contract, to, "issue", data)
 }
 
-func (m *TokenContract) Transfer(contract, from, to, quantity interface{}, memo string) (*eosc.PushTransactionFullResp, error) {
+func (m *TokenContract) Transfer(contract, from, to, quantity interface{}, memo string) (*service.PushTransactionFullResp, error) {
 
 	fromAN, err := util.ToAccountName(from)
 	if err != nil {
