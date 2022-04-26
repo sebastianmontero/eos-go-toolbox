@@ -2,13 +2,18 @@ package util
 
 import (
 	"fmt"
+	"math"
+	"math/big"
 	"math/rand"
 	"time"
 
 	"github.com/eoscanada/eos-go"
 )
 
-const charset = "abcdefghijklmnopqrstuvwxyz" + "12345"
+const (
+	PercentageAdjustment = float64(10000000)
+	charset              = "abcdefghijklmnopqrstuvwxyz" + "12345"
+)
 
 var seededRand *rand.Rand = rand.New(
 	rand.NewSource(time.Now().UnixNano()))
@@ -16,6 +21,44 @@ var seededRand *rand.Rand = rand.New(
 func MultiplyAsset(asset eos.Asset, times int64) eos.Asset {
 	total := eos.Int64(int64(asset.Amount) * times)
 	return eos.Asset{Amount: total, Symbol: asset.Symbol}
+}
+
+func CalculatePercentage(amount interface{}, percentage uint32) eos.Asset {
+	amnt, err := ToAsset(amount)
+	if err != nil {
+		panic(fmt.Sprintf("failed to calculate percentage, could not parse amount: %v", amount))
+	}
+	perctAmnt := float64(amnt.Amount) * float64((float64(percentage) / PercentageAdjustment))
+	return eos.Asset{Amount: eos.Int64(perctAmnt), Symbol: amnt.Symbol}
+}
+
+func DivideAssets(dividend, divisor eos.Asset) eos.Asset {
+	dividendAdj := AdjustPrecision(big.NewInt(int64(dividend.Amount)), dividend.Precision, dividend.Precision+divisor.Precision)
+	result := big.NewInt(0).Div(dividendAdj, big.NewInt(int64(divisor.Amount)))
+	result = AdjustPrecision(result, dividend.Precision, divisor.Precision)
+	if !result.IsInt64() {
+		panic("Division overflow")
+	}
+	return eos.Asset{Amount: eos.Int64(result.Int64()), Symbol: divisor.Symbol}
+}
+
+func DivideAsset(asset eos.Asset, divisor uint64) eos.Asset {
+	if divisor == 0 {
+		panic("can not divide by zero")
+	}
+	return eos.Asset{Amount: asset.Amount / eos.Int64(divisor), Symbol: asset.Symbol}
+}
+
+func AdjustPrecision(amount *big.Int, precision, newPrecision uint8) *big.Int {
+	diff := int(newPrecision) - int(precision)
+	multiplier := big.NewInt(0).Exp(big.NewInt(10), big.NewInt(int64(math.Abs(float64(diff)))), nil)
+	if diff > 0 {
+		return amount.Mul(amount, multiplier)
+	} else if diff < 0 {
+		return amount.Div(amount, multiplier)
+	} else {
+		return amount
+	}
 }
 
 //ToTime Converts string time to time.Time

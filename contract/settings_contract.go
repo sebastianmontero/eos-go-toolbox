@@ -89,6 +89,14 @@ func (m *Setting) GetAsInt64(pos int) (int64, error) {
 	return v.Int64(), nil
 }
 
+func (m *Setting) GetAsUint32(pos int) (uint32, error) {
+	v, err := m.Get(pos)
+	if err != nil {
+		return 0, err
+	}
+	return v.Uint32(), nil
+}
+
 type SettingsContract struct {
 	*Contract
 }
@@ -100,6 +108,66 @@ func NewSettingsContract(eos *service.EOS, contractName string) *SettingsContrac
 			ContractName: contractName,
 		},
 	}
+}
+
+func (m *SettingsContract) SettingAsUint32(key string) (uint32, error) {
+	setting, err := m.GetSetting(key)
+	if err != nil {
+		return 0, err
+	}
+	value, err := setting.GetAsUint32(0)
+	if err != nil {
+		return 0, fmt.Errorf("failed getting setting: %v as uint32, error: %v", value, err)
+	}
+	return value, nil
+}
+
+func (m *SettingsContract) SettingAsAsset(key string) (eos.Asset, error) {
+	setting, err := m.GetSetting(key)
+	if err != nil {
+		return eos.Asset{}, err
+	}
+	value, err := setting.GetAsAsset(0)
+	if err != nil {
+		return eos.Asset{}, fmt.Errorf("failed getting setting: %v as asset, error: %v", value, err)
+	}
+	return value, nil
+}
+
+func (m *SettingsContract) SettingAsInt64(key string) (int64, error) {
+	setting, err := m.GetSetting(key)
+	if err != nil {
+		return 0, err
+	}
+	value, err := setting.GetAsInt64(0)
+	if err != nil {
+		return 0, fmt.Errorf("failed getting setting: %v as int64, error: %v", value, err)
+	}
+	return value, nil
+}
+
+func (m *SettingsContract) SettingAsName(key string) (eos.Name, error) {
+	setting, err := m.GetSetting(key)
+	if err != nil {
+		return "", err
+	}
+	value, err := setting.GetAsName(0)
+	if err != nil {
+		return "", fmt.Errorf("failed getting setting: %v as name, error: %v", value, err)
+	}
+	return value, nil
+}
+
+func (m *SettingsContract) SettingAsString(key string) (string, error) {
+	setting, err := m.GetSetting(key)
+	if err != nil {
+		return "", err
+	}
+	value, err := setting.GetAsString(0)
+	if err != nil {
+		return "", fmt.Errorf("failed getting setting: %v as string, error: %v", value, err)
+	}
+	return value, nil
 }
 
 func (m *SettingsContract) setter(owner eos.AccountName,
@@ -184,7 +252,7 @@ func (m *SettingsContract) GetSettings() ([]Setting, error) {
 func (m *SettingsContract) GetSetting(key string) (*Setting, error) {
 	settings, err := m.GetSettings()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed getting setting: %v, error: %v", key, err)
 	}
 	for _, setting := range settings {
 		if setting.Key == key {
@@ -212,6 +280,7 @@ func (m *SettingsContract) SetupConfigSettings(owner eos.AccountName, settings i
 	for _, value := range settings.([]interface{}) {
 		err := m.SetupConfigSetting(owner, value.(map[interface{}]interface{}))
 		if err != nil {
+			fmt.Println("Config setting: ", value.(map[interface{}]interface{}))
 			return err
 		}
 	}
