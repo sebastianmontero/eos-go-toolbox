@@ -61,6 +61,14 @@ func AdjustPrecision(amount *big.Int, precision, newPrecision uint8) *big.Int {
 	}
 }
 
+func TimeToString(t time.Time) string {
+	return t.Format("2006-01-02T15:04:05.000")
+}
+
+func NowToString() string {
+	return TimeToString(time.Now())
+}
+
 //ToTime Converts string time to time.Time
 func ToTime(strTime string) (time.Time, error) {
 	t, err := time.Parse("2006-01-02T15:04:05", strTime)
