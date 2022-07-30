@@ -445,6 +445,51 @@ func (m *EOS) LinkPermission(accountName, actionName, permissionName interface{}
 	return nil
 }
 
+func (m *EOS) AreTablesEmpty(code string, tables []string) (bool, error) {
+	for _, table := range tables {
+		empty, err := m.IsTableEmpty(code, table)
+		if err != nil {
+			return false, err
+		}
+		if !empty {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func (m *EOS) IsTableEmpty(code, table string) (bool, error) {
+	scopes, err := m.GetAllTableScopes(code, table)
+	if err != nil {
+		return false, fmt.Errorf("error getting table: %v scopes, error: %v", table, err)
+	}
+	for _, scope := range scopes {
+		empty, err := m.IsTableScopeEmpty(code, scope.Scope, table)
+		if err != nil {
+			return false, err
+		}
+		if !empty {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func (m *EOS) IsTableScopeEmpty(code, scope, table string) (bool, error) {
+	req := &eosc.GetTableRowsRequest{
+		Code:  code,
+		Scope: scope,
+		Table: table,
+		Limit: 1,
+	}
+	var rows []interface{}
+	err := m.GetTableRows(*req, &rows)
+	if err != nil {
+		return false, fmt.Errorf("error getting table: %v, scope: %v rows, error: %v", table, scope, err)
+	}
+	return len(rows) == 0, nil
+}
+
 func (m *EOS) GetTableRows(request eosc.GetTableRowsRequest, rows interface{}) error {
 	return m.GetTableRowsRetries(request, rows, retries)
 }
@@ -468,6 +513,26 @@ func (m *EOS) GetTableRowsRetries(request eosc.GetTableRowsRequest, rows interfa
 		return fmt.Errorf("json to structs %v", err)
 	}
 	return nil
+}
+
+func (m *EOS) GetAllTableScopes(code, table string) ([]*TableScope, error) {
+	scopes := make([]*TableScope, 0)
+	req := eosc.GetTableByScopeRequest{
+		Code:  code,
+		Table: table,
+		Limit: 10000,
+	}
+	for {
+		resp, err := m.GetTableScopes(req)
+		if err != nil {
+			return nil, err
+		}
+		scopes = append(scopes, resp.Scopes...)
+		if resp.More == "" {
+			return scopes, nil
+		}
+		req.LowerBound = resp.More
+	}
 }
 
 func (m *EOS) GetTableScopes(request eosc.GetTableByScopeRequest) (*TableScopesResp, error) {

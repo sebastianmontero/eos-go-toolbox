@@ -80,3 +80,19 @@ func (m *Contract) GetTableScopes(request eos.GetTableByScopeRequest) (*service.
 	}
 	return m.EOS.GetTableScopes(request)
 }
+
+func (m *Contract) GetAllTableScopes(table string) ([]*service.TableScope, error) {
+	return m.EOS.GetAllTableScopes(string(m.ContractName), table)
+}
+
+func (m *Contract) IsTableScopeEmpty(scope, table string) (bool, error) {
+	return m.EOS.IsTableScopeEmpty(string(m.ContractName), scope, table)
+}
+
+func (m *Contract) IsTableEmpty(table string) (bool, error) {
+	return m.EOS.IsTableEmpty(string(m.ContractName), table)
+}
+
+func (m *Contract) AreTablesEmpty(tables []string) (bool, error) {
+	return m.EOS.AreTablesEmpty(string(m.ContractName), tables)
+}
