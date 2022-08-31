@@ -131,7 +131,8 @@ func (m *EOS) Trx(retries int, actions ...*eosc.Action) (*eosc.PushTransactionFu
 func isRetryableError(err error) bool {
 	errMsg := err.Error()
 	// fmt.Println("Error: ", errMsg)
-	return strings.Contains(errMsg, "connection reset by peer") ||
+	return strings.Contains(errMsg, "deadline") ||
+		strings.Contains(errMsg, "connection reset by peer") ||
 		strings.Contains(errMsg, "Transaction took too long") ||
 		strings.Contains(errMsg, "exceeded the current CPU usage limit") ||
 		strings.Contains(errMsg, "ABI serialization time has exceeded")
@@ -229,7 +230,7 @@ func (m *EOS) GetAccount(accountName interface{}) (*eosc.AccountResp, error) {
 	return accountData, nil
 }
 
-//SetContract sets contract, if publicKey is not nil it creates the account
+// SetContract sets contract, if publicKey is not nil it creates the account
 func (m *EOS) SetContract(accountName interface{}, wasmFile, abiFile string, publicKey *ecc.PublicKey) (*eosc.PushTransactionFullResp, error) {
 
 	if publicKey != nil {

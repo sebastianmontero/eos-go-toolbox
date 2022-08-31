@@ -59,7 +59,7 @@ var FlexValueVariant = eos.NewVariantDefinition([]eos.VariantType{
 	// {Name: "microseconds", Type: Microseconds{}},
 	{Name: "int64", Type: int64(0)},
 	{Name: "uint32", Type: uint32(0)},
-	// {Name: "uint64", Type: uint64(0)},
+	{Name: "uint64", Type: uint64(0)},
 	{Name: "checksum256", Type: eos.Checksum256([]byte("0"))},
 })
 
@@ -109,9 +109,9 @@ func FlexValueFromUint32(value uint32) *FlexValue {
 	return NewFlexValue("uint32", value)
 }
 
-// func FlexValueFromUint64(value uint64) *FlexValue {
-// 	return NewFlexValue("uint64", value)
-// }
+func FlexValueFromUint64(value uint64) *FlexValue {
+	return NewFlexValue("uint64", value)
+}
 
 func FlexValueFromChecksum(value eos.Checksum256) *FlexValue {
 	return NewFlexValue("checksum256", value)
@@ -125,30 +125,36 @@ func ParseToFlexValue(settingType, stringValue string) (*FlexValue, error) {
 	} else if settingType == "int64" {
 		i, err := strconv.ParseInt(stringValue, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("cannot convert settings value to int64: %v", err)
+			return nil, fmt.Errorf("cannot convert flex value to int64: %v", err)
 		}
 		return NewFlexValue(settingType, i), nil
 	} else if settingType == "uint32" {
 		i, err := strconv.ParseUint(stringValue, 10, 32)
 		if err != nil {
-			return nil, fmt.Errorf("cannot convert settings value to uint32: %v", err)
+			return nil, fmt.Errorf("cannot convert flex value to uint32: %v", err)
+		}
+		return NewFlexValue(settingType, i), nil
+	} else if settingType == "uint64" {
+		i, err := strconv.ParseUint(stringValue, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert flex value to uint64: %v", err)
 		}
 		return NewFlexValue(settingType, i), nil
 	} else if settingType == "asset" {
 		a, err := eos.NewAssetFromString(stringValue)
 		if err != nil {
-			return nil, fmt.Errorf("cannot convert settings value to asset: %v", err)
+			return nil, fmt.Errorf("cannot convert flex value to asset: %v", err)
 		}
 		return NewFlexValue(settingType, a), nil
 	}
-	return nil, fmt.Errorf("unsupported settings data type: %v", settingType)
+	return nil, fmt.Errorf("unsupported flex data type: %v", settingType)
 }
 
 func (fv *FlexValue) String() string {
 	switch v := fv.Impl.(type) {
 	case eos.Name:
 		return string(v)
-	case int64, uint32:
+	case int64, uint32, uint64:
 		return fmt.Sprint(v)
 	case eos.Asset:
 		return v.String()
@@ -249,18 +255,18 @@ func (fv *FlexValue) Uint32() uint32 {
 	}
 }
 
-// func (fv *FlexValue) Uint64() (uint64, error) {
-// 	switch v := fv.Impl.(type) {
-// 	case uint64:
-// 		return v, nil
-// 	default:
-// 		return 0, &err.InvalidTypeError{
-// 			Label:        fmt.Sprintf("received an unexpected type %T for variant %T", v, fv),
-// 			ExpectedType: "uint64",
-// 			Value:        fv,
-// 		}
-// 	}
-// }
+func (fv *FlexValue) Uint64() (uint64, error) {
+	switch v := fv.Impl.(type) {
+	case uint64:
+		return v, nil
+	default:
+		return 0, &err.InvalidTypeError{
+			Label:        fmt.Sprintf("received an unexpected type %T for variant %T", v, fv),
+			ExpectedType: "uint64",
+			Value:        fv,
+		}
+	}
+}
 
 // IsEqual evaluates if the two FlexValues have the same types and values (deep compare)
 func (fv *FlexValue) IsEqual(fv2 *FlexValue) bool {
