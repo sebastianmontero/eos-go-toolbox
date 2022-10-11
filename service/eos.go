@@ -1,10 +1,15 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"math/big"
+	"net/http"
+	"net/http/httputil"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +18,7 @@ import (
 	"github.com/eoscanada/eos-go/ecc"
 	"github.com/eoscanada/eos-go/msig"
 	"github.com/eoscanada/eos-go/system"
+	"github.com/sebastianmontero/eos-go-toolbox/dto"
 	"github.com/sebastianmontero/eos-go-toolbox/util"
 )
 
@@ -759,4 +765,168 @@ func (m *EOS) ProposeSetContractMultiSig(proposerName interface{}, requested []e
 	}
 	return m.ProposeMultiSig(proposerName, requested, expireIn, actions...)
 
+}
+
+func (m *EOS) GetInfo() (*eosc.InfoResp, error) {
+	info, err := m.API.GetInfo(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed getting chain info, error: %v", err)
+	}
+	return info, nil
+}
+
+func (m *EOS) GetActions(account eosc.AccountName, action eosc.ActionName, quantity int) ([]*dto.Action, error) {
+	time.Sleep(time.Second)
+	info, err := m.GetInfo()
+	if err != nil {
+		return nil, err
+	}
+	infostr, _ := json.Marshal(info)
+	fmt.Println("Info: \n", string(infostr))
+	actions := make([]*dto.Action, 0)
+	for blockNum := int64(info.HeadBlockNum + 10); blockNum >= 0; blockNum-- {
+		if len(actions) >= quantity {
+			actstr, _ := json.Marshal(actions)
+			fmt.Printf("Actions account: %v action:%v actions:%v \n", account, action, string(actstr))
+			return actions, nil
+		}
+		block, err := m.GetBlock(uint32(blockNum))
+		if err != nil {
+			if !strings.Contains(err.Error(), "block trace missing") {
+				return nil, err
+			}
+		}
+		if block != nil {
+			fmt.Println("Block: \n", block)
+			actions = append(actions, block.GetActions(account, action, quantity-len(actions))...)
+		}
+	}
+	actstr, _ := json.Marshal(actions)
+	fmt.Printf("Actions account: %v action:%v actions:%v \n", account, action, string(actstr))
+	return actions, nil
+}
+
+func (m *EOS) GetActionAt(account eosc.AccountName, action eosc.ActionName, pos int) (*dto.Action, error) {
+	actions, err := m.GetActions(account, action, pos+1)
+	if err != nil {
+		return nil, err
+	}
+	if len(actions) > pos {
+		return actions[pos], nil
+	}
+	return nil, nil
+}
+
+func (m *EOS) GetBlock(blockNum uint32) (out *dto.Block, err error) {
+	err = m.call(context.Background(), "trace_api", "get_block", M{"block_num": blockNum}, &out)
+	if err != nil {
+		err = fmt.Errorf("failed getting block: %v, error: %v", blockNum, err)
+	}
+	return
+}
+
+func (m *EOS) call(ctx context.Context, baseAPI string, endpoint string, body interface{}, out interface{}) error {
+	jsonBody, err := enc(body)
+	if err != nil {
+		return err
+	}
+
+	targetURL := fmt.Sprintf("%s/v1/%s/%s", m.API.BaseURL, baseAPI, endpoint)
+	req, err := http.NewRequest("POST", targetURL, jsonBody)
+	if err != nil {
+		return fmt.Errorf("NewRequest: %w", err)
+	}
+
+	for k, v := range m.API.Header {
+		if req.Header == nil {
+			req.Header = http.Header{}
+		}
+		req.Header[k] = append(req.Header[k], v...)
+	}
+
+	if m.API.Debug {
+		// Useful when debugging API calls
+		requestDump, err := httputil.DumpRequest(req, true)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println("-------------------------------")
+		fmt.Println(string(requestDump))
+		fmt.Println("")
+	}
+
+	resp, err := m.API.HttpClient.Do(req.WithContext(ctx))
+	if err != nil {
+		return fmt.Errorf("%s: %w", req.URL.String(), err)
+	}
+	defer resp.Body.Close()
+
+	var cnt bytes.Buffer
+	_, err = io.Copy(&cnt, resp.Body)
+	if err != nil {
+		return fmt.Errorf("Copy: %w", err)
+	}
+
+	if resp.StatusCode == 404 {
+		var apiErr eosc.APIError
+		if err := json.Unmarshal(cnt.Bytes(), &apiErr); err != nil {
+			return ErrNotFound
+		}
+		return apiErr
+	}
+
+	if resp.StatusCode > 299 {
+		var apiErr eosc.APIError
+		if err := json.Unmarshal(cnt.Bytes(), &apiErr); err != nil {
+			return fmt.Errorf("%s: status code=%d, body=%s", req.URL.String(), resp.StatusCode, cnt.String())
+		}
+
+		// Handle cases where some API calls (/v1/chain/get_account for example) returns a 500
+		// error when retrieving data that does not exist.
+		if apiErr.IsUnknownKeyError() {
+			return ErrNotFound
+		}
+
+		return apiErr
+	}
+
+	if m.API.Debug {
+		fmt.Println("RESPONSE:")
+		responseDump, err := httputil.DumpResponse(resp, true)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println("-------------------------------")
+		fmt.Println(cnt.String())
+		fmt.Println("-------------------------------")
+		fmt.Printf("%q\n", responseDump)
+		fmt.Println("")
+	}
+
+	if err := json.Unmarshal(cnt.Bytes(), &out); err != nil {
+		return fmt.Errorf("Unmarshal: %w", err)
+	}
+
+	return nil
+}
+
+var ErrNotFound = errors.New("resource not found")
+
+type M map[string]interface{}
+
+func enc(v interface{}) (io.Reader, error) {
+	if v == nil {
+		return nil, nil
+	}
+
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	encoder.SetEscapeHTML(false)
+
+	err := encoder.Encode(v)
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer, nil
 }
