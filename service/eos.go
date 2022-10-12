@@ -781,13 +781,13 @@ func (m *EOS) GetActions(account eosc.AccountName, action eosc.ActionName, quant
 	if err != nil {
 		return nil, err
 	}
-	infostr, _ := json.Marshal(info)
-	fmt.Println("Info: \n", string(infostr))
+	// infostr, _ := json.Marshal(info)
+	// fmt.Println("Info: \n", string(infostr))
 	actions := make([]*dto.Action, 0)
 	for blockNum := int64(info.HeadBlockNum + 10); blockNum >= 0; blockNum-- {
 		if len(actions) >= quantity {
-			actstr, _ := json.Marshal(actions)
-			fmt.Printf("Actions account: %v action:%v actions:%v \n", account, action, string(actstr))
+			// actstr, _ := json.Marshal(actions)
+			// fmt.Printf("Actions account: %v action:%v actions:%v \n", account, action, string(actstr))
 			return actions, nil
 		}
 		block, err := m.GetBlock(uint32(blockNum))
@@ -797,12 +797,12 @@ func (m *EOS) GetActions(account eosc.AccountName, action eosc.ActionName, quant
 			}
 		}
 		if block != nil {
-			fmt.Println("Block: \n", block)
+			// fmt.Println("Block: \n", block)
 			actions = append(actions, block.GetActions(account, action, quantity-len(actions))...)
 		}
 	}
-	actstr, _ := json.Marshal(actions)
-	fmt.Printf("Actions account: %v action:%v actions:%v \n", account, action, string(actstr))
+	// actstr, _ := json.Marshal(actions)
+	// fmt.Printf("Actions account: %v action:%v actions:%v \n", account, action, string(actstr))
 	return actions, nil
 }
 
