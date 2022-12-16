@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/eoscanada/eos-go"
 	eosc "github.com/eoscanada/eos-go"
 	"github.com/eoscanada/eos-go/ecc"
 	"github.com/eoscanada/eos-go/msig"
@@ -71,6 +72,17 @@ func NewEOS(api *eosc.API) *EOS {
 	return &EOS{
 		API: api,
 	}
+}
+
+func NameFromString(s string) (eos.Name, error) {
+	n, err := eos.StringToName(s)
+	if err != nil {
+		return "", err
+	}
+	if s != eos.NameToString(n) {
+		return "", fmt.Errorf("invalid eos name: %v", s)
+	}
+	return eos.Name(s), nil
 }
 
 func GetEOSIOKey() *ecc.PrivateKey {
