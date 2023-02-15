@@ -509,6 +509,46 @@ func (m *EOS) IsTableScopeEmpty(code, scope, table string) (bool, error) {
 	return len(rows) == 0, nil
 }
 
+func (m *EOS) GetAllTableRows(req eosc.GetTableRowsRequest, keyName string, structuredRows interface{}) error {
+	allRows, err := m.GetAllTableRowsAsMap(req, keyName)
+	if err != nil {
+		return err
+	}
+	serialized, err := json.Marshal(allRows)
+	if err != nil {
+		return fmt.Errorf("failed marshalling rows to json %v", err)
+	}
+	err = json.Unmarshal(serialized, structuredRows)
+	if err != nil {
+		return fmt.Errorf("failed unmarshalling json to structured rows: %v", err)
+	}
+	return nil
+
+}
+
+func (m *EOS) GetAllTableRowsAsMap(req eosc.GetTableRowsRequest, keyName string) ([]map[string]interface{}, error) {
+	allRows := make([]map[string]interface{}, 0)
+	lowerBound := ""
+	for {
+		req.LowerBound = lowerBound
+		req.Limit = 1000
+		var rows []map[string]interface{}
+		err := m.GetTableRows(req, &rows)
+		if err != nil {
+			return nil, fmt.Errorf("failed getting table rows %v", err)
+		}
+		if lowerBound != "" {
+			rows = rows[1:]
+		}
+		if len(rows) == 0 {
+			return allRows, nil
+		}
+		lowerBound = fmt.Sprintf("%v", (rows[len(rows)-1][keyName]))
+		allRows = append(allRows, rows...)
+	}
+
+}
+
 func (m *EOS) GetTableRows(request eosc.GetTableRowsRequest, rows interface{}) error {
 	return m.GetTableRowsRetries(request, rows, retries)
 }

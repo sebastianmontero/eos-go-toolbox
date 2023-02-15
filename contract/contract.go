@@ -34,7 +34,7 @@ type Contract struct {
 	EOS          *service.EOS
 }
 
-//ExecActionC Accepts contract name on which to execute the action
+// ExecActionC Accepts contract name on which to execute the action
 func (m *Contract) ExecActionC(contract, permissionLevel, action, data interface{}) (*service.PushTransactionFullResp, error) {
 	resp, err := m.EOS.SimpleTrx(contract, action, permissionLevel, data)
 	if err != nil {
@@ -67,6 +67,30 @@ func (m *Contract) GetTableRows(request eos.GetTableRowsRequest, rows interface{
 		request.Limit = 100
 	}
 	return m.EOS.GetTableRows(request, rows)
+}
+
+func (m *Contract) GetAllTableRows(request eos.GetTableRowsRequest, keyName string, rows interface{}) error {
+
+	if request.Code == "" {
+		request.Code = string(m.ContractName)
+	}
+	if request.Scope == "" {
+		request.Scope = string(m.ContractName)
+	}
+
+	return m.EOS.GetAllTableRows(request, keyName, rows)
+}
+
+func (m *Contract) GetAllTableRowsAsMap(request eos.GetTableRowsRequest, keyName string) ([]map[string]interface{}, error) {
+
+	if request.Code == "" {
+		request.Code = string(m.ContractName)
+	}
+	if request.Scope == "" {
+		request.Scope = string(m.ContractName)
+	}
+
+	return m.EOS.GetAllTableRowsAsMap(request, keyName)
 }
 
 func (m *Contract) GetTableScopes(request eos.GetTableByScopeRequest) (*service.TableScopesResp, error) {
