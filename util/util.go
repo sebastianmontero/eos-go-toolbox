@@ -69,7 +69,7 @@ func NowToString() string {
 	return TimeToString(time.Now())
 }
 
-//ToTime Converts string time to time.Time
+// ToTime Converts string time to time.Time
 func ToTime(strTime string) (time.Time, error) {
 	t, err := time.Parse("2006-01-02T15:04:05", strTime)
 	if err != nil {
@@ -176,5 +176,7 @@ func StringWithCharset(length int, charset string) string {
 }
 
 func RandAccountName() string {
-	return StringWithCharset(12, charset)
+	letters := "abcdefghijklmnopqrstuvwxyz"
+	all := letters + "12345."
+	return StringWithCharset(1, letters) + StringWithCharset(11, all)
 }
