@@ -153,7 +153,8 @@ func isRetryableError(err error) bool {
 		strings.Contains(errMsg, "connection reset by peer") ||
 		strings.Contains(errMsg, "Transaction took too long") ||
 		strings.Contains(errMsg, "exceeded the current CPU usage limit") ||
-		strings.Contains(errMsg, "ABI serialization time has exceeded")
+		strings.Contains(errMsg, "ABI serialization time has exceeded") ||
+		strings.Contains(errMsg, "Invalid Reference Block: Transaction's reference block did not match. Is this transaction from a different fork")
 
 }
 
