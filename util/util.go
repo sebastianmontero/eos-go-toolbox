@@ -65,8 +65,20 @@ func TimeToString(t time.Time) string {
 	return t.Format("2006-01-02T15:04:05.000")
 }
 
+func UTCTimeToString(t time.Time) string {
+	return t.UTC().Format("2006-01-02T15:04:05.000")
+}
+
 func NowToString() string {
 	return TimeToString(time.Now())
+}
+
+func UTCNowToString() string {
+	return UTCTimeToString(time.Now())
+}
+
+func UTCShiftedTimeToString(d time.Duration) string {
+	return UTCTimeToString(time.Now().Add(d))
 }
 
 // ToTime Converts string time to time.Time
