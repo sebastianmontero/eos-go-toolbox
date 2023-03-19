@@ -82,6 +82,10 @@ func (m *Contract) GetAllTableRows(request eos.GetTableRowsRequest, keyName stri
 }
 
 func (m *Contract) GetAllTableRowsAsMap(request eos.GetTableRowsRequest, keyName string) ([]map[string]interface{}, error) {
+	return m.GetAllTableRowsFromAsMap(request, keyName, "")
+}
+
+func (m *Contract) GetAllTableRowsFromAsMap(request eos.GetTableRowsRequest, keyName, start string) ([]map[string]interface{}, error) {
 
 	if request.Code == "" {
 		request.Code = string(m.ContractName)
@@ -90,7 +94,7 @@ func (m *Contract) GetAllTableRowsAsMap(request eos.GetTableRowsRequest, keyName
 		request.Scope = string(m.ContractName)
 	}
 
-	return m.EOS.GetAllTableRowsAsMap(request, keyName)
+	return m.EOS.GetAllTableRowsFromAsMap(request, keyName, start)
 }
 
 func (m *Contract) GetTableScopes(request eos.GetTableByScopeRequest) (*service.TableScopesResp, error) {

@@ -528,8 +528,12 @@ func (m *EOS) GetAllTableRows(req eosc.GetTableRowsRequest, keyName string, stru
 }
 
 func (m *EOS) GetAllTableRowsAsMap(req eosc.GetTableRowsRequest, keyName string) ([]map[string]interface{}, error) {
+	return m.GetAllTableRowsFromAsMap(req, keyName, "")
+}
+
+func (m *EOS) GetAllTableRowsFromAsMap(req eosc.GetTableRowsRequest, keyName, startFrom string) ([]map[string]interface{}, error) {
 	allRows := make([]map[string]interface{}, 0)
-	lowerBound := ""
+	lowerBound := startFrom
 	for {
 		req.LowerBound = lowerBound
 		req.Limit = 1000
@@ -538,7 +542,7 @@ func (m *EOS) GetAllTableRowsAsMap(req eosc.GetTableRowsRequest, keyName string)
 		if err != nil {
 			return nil, fmt.Errorf("failed getting table rows %v", err)
 		}
-		if lowerBound != "" {
+		if lowerBound != startFrom {
 			rows = rows[1:]
 		}
 		if len(rows) == 0 {
