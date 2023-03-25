@@ -23,13 +23,32 @@ func MultiplyAsset(asset eos.Asset, times int64) eos.Asset {
 	return eos.Asset{Amount: total, Symbol: asset.Symbol}
 }
 
-func CalculatePercentage(amount interface{}, percentage uint32) eos.Asset {
+// func CalculatePercentage(amount interface{}, percentage uint32) eos.Asset {
+// 	amnt, err := ToAsset(amount)
+// 	if err != nil {
+// 		panic(fmt.Sprintf("failed to calculate percentage, could not parse amount: %v", amount))
+// 	}
+// 	perctAmnt := float64(amnt.Amount) * float64((float64(percentage) / PercentageAdjustment))
+// 	return eos.Asset{Amount: eos.Int64(perctAmnt), Symbol: amnt.Symbol}
+// }
+
+func CalculateAssetPercentage(amount interface{}, percentage uint32) eos.Asset {
 	amnt, err := ToAsset(amount)
 	if err != nil {
 		panic(fmt.Sprintf("failed to calculate percentage, could not parse amount: %v", amount))
 	}
-	perctAmnt := float64(amnt.Amount) * float64((float64(percentage) / PercentageAdjustment))
-	return eos.Asset{Amount: eos.Int64(perctAmnt), Symbol: amnt.Symbol}
+	return eos.Asset{Amount: eos.Int64(CalculatePercentage(int64(amnt.Amount), percentage)), Symbol: amnt.Symbol}
+}
+
+func CalculatePercentage(amount int64, percentage uint32) int64 {
+	percAdj := big.NewInt(10000000)
+	r := big.NewInt(0)
+	r.Mul(big.NewInt(int64(amount)), big.NewInt(int64(percentage)))
+	r.Div(r, percAdj)
+	if !r.IsInt64() {
+		panic("amount percentage overflows int64")
+	}
+	return r.Int64()
 }
 
 func DivideAssets(dividend, divisor eos.Asset) eos.Asset {
