@@ -250,9 +250,20 @@ func (m *SettingsContract) GetSettings() ([]Setting, error) {
 }
 
 func (m *SettingsContract) GetSetting(key string) (*Setting, error) {
+	setting, err := m.FindSetting(key)
+	if err != nil {
+		return nil, err
+	}
+	if setting == nil {
+		return nil, fmt.Errorf("setting: %v does not exist", key)
+	}
+	return setting, nil
+}
+
+func (m *SettingsContract) FindSetting(key string) (*Setting, error) {
 	settings, err := m.GetSettings()
 	if err != nil {
-		return nil, fmt.Errorf("failed getting setting: %v, error: %v", key, err)
+		return nil, fmt.Errorf("failed getting settings: %v, error: %v", key, err)
 	}
 	for _, setting := range settings {
 		if setting.Key == key {
