@@ -11,3 +11,4 @@ require (
 )
 
 // replace github.com/digital-scarcity/eos-go-test => ../eos-go-test
+replace github.com/eoscanada/eos-go => ../eos-go

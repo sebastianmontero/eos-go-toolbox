@@ -38,6 +38,17 @@ type Setting struct {
 	UpdatedDate eos.BlockTimestamp `json:"updated_date"`
 }
 
+type ModifySettingArgs struct {
+	Setter eos.AccountName `json:"setter"`
+	Value  *dto.FlexValue  `json:"value"`
+	Key    string          `json:"key"`
+}
+
+type EraseSettingArgs struct {
+	Setter eos.AccountName `json:"setter"`
+	Key    string          `json:"key"`
+}
+
 func (m *Setting) ValueCount() int {
 	return len(m.Values)
 }
@@ -183,12 +194,12 @@ func (m *SettingsContract) proposeSetter(proposerName interface{}, requested []e
 }
 
 func (m *SettingsContract) getSetterData(owner eos.AccountName,
-	key string, flexValue *dto.FlexValue) map[string]interface{} {
-	actionData := make(map[string]interface{})
-	actionData["setter"] = owner
-	actionData["key"] = key
-	actionData["value"] = flexValue
-	return actionData
+	key string, flexValue *dto.FlexValue) *ModifySettingArgs {
+	return &ModifySettingArgs{
+		Setter: owner,
+		Key:    key,
+		Value:  flexValue,
+	}
 }
 
 func (m *SettingsContract) SetSetting(owner eos.AccountName,
@@ -229,11 +240,12 @@ func (m *SettingsContract) ProposeClipSetting(proposerName interface{}, requeste
 
 func (m *SettingsContract) EraseSetting(owner eos.AccountName, key string) (*service.PushTransactionFullResp, error) {
 
-	actionData := make(map[string]interface{})
-	actionData["setter"] = owner
-	actionData["key"] = key
+	eraseArgs := &EraseSettingArgs{
+		Setter: owner,
+		Key:    key,
+	}
 
-	return m.ExecAction(owner, "erasesetting", actionData)
+	return m.ExecAction(owner, "erasesetting", eraseArgs)
 }
 
 func (m *SettingsContract) ProposeEraseSetting(proposerName interface{}, requested []eos.PermissionLevel, expireIn time.Duration, owner eos.AccountName,
