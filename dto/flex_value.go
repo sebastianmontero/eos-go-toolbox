@@ -74,7 +74,7 @@ type FlexValue struct {
 	eos.BaseVariant
 }
 
-func NewFlexValue(typeId string, value interface{}) *FlexValue {
+func newFlexValue(typeId string, value interface{}) *FlexValue {
 	return &FlexValue{
 		BaseVariant: eos.BaseVariant{
 			TypeID: GetFlexValueVariants().TypeID(typeId),
@@ -83,69 +83,69 @@ func NewFlexValue(typeId string, value interface{}) *FlexValue {
 }
 
 func FlexValueFromString(value string) *FlexValue {
-	return NewFlexValue("string", value)
+	return newFlexValue("string", value)
 }
 func FlexValueFromName(value eos.Name) *FlexValue {
-	return NewFlexValue("name", value)
+	return newFlexValue("name", value)
 }
 
 func FlexValueFromAsset(value eos.Asset) *FlexValue {
-	return NewFlexValue("asset", value)
+	return newFlexValue("asset", value)
 }
 
 func FlexValueFromTimePoint(value eos.TimePoint) *FlexValue {
-	return NewFlexValue("time_point", value)
+	return newFlexValue("time_point", value)
 }
 
 // func FlexValueFromMicroseconds(value Microseconds) *FlexValue {
-// 	return NewFlexValue("microseconds", value)
+// 	return newFlexValue("microseconds", value)
 // }
 
 func FlexValueFromInt64(value int64) *FlexValue {
-	return NewFlexValue("int64", value)
+	return newFlexValue("int64", value)
 }
 
 func FlexValueFromUint32(value uint32) *FlexValue {
-	return NewFlexValue("uint32", value)
+	return newFlexValue("uint32", value)
 }
 
 func FlexValueFromUint64(value uint64) *FlexValue {
-	return NewFlexValue("uint64", value)
+	return newFlexValue("uint64", value)
 }
 
 func FlexValueFromChecksum(value eos.Checksum256) *FlexValue {
-	return NewFlexValue("checksum256", value)
+	return newFlexValue("checksum256", value)
 }
 
 func ParseToFlexValue(settingType, stringValue string) (*FlexValue, error) {
 	if settingType == "string" {
-		return NewFlexValue(settingType, stringValue), nil
+		return newFlexValue(settingType, stringValue), nil
 	} else if settingType == "name" {
-		return NewFlexValue(settingType, eos.Name(stringValue)), nil
+		return newFlexValue(settingType, eos.Name(stringValue)), nil
 	} else if settingType == "int64" {
 		i, err := strconv.ParseInt(stringValue, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("cannot convert flex value to int64: %v", err)
 		}
-		return NewFlexValue(settingType, i), nil
+		return newFlexValue(settingType, i), nil
 	} else if settingType == "uint32" {
 		i, err := strconv.ParseUint(stringValue, 10, 32)
 		if err != nil {
 			return nil, fmt.Errorf("cannot convert flex value to uint32: %v", err)
 		}
-		return NewFlexValue(settingType, i), nil
+		return newFlexValue(settingType, i), nil
 	} else if settingType == "uint64" {
 		i, err := strconv.ParseUint(stringValue, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("cannot convert flex value to uint64: %v", err)
 		}
-		return NewFlexValue(settingType, i), nil
+		return newFlexValue(settingType, i), nil
 	} else if settingType == "asset" {
 		a, err := eos.NewAssetFromString(stringValue)
 		if err != nil {
 			return nil, fmt.Errorf("cannot convert flex value to asset: %v", err)
 		}
-		return NewFlexValue(settingType, a), nil
+		return newFlexValue(settingType, a), nil
 	}
 	return nil, fmt.Errorf("unsupported flex data type: %v", settingType)
 }

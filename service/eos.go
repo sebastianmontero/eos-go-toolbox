@@ -724,23 +724,24 @@ func (m *EOS) BuildAction(contractName, actionName, permissionLevel, data interf
 		return nil, err
 	}
 
-	switch v := data.(type) {
+	switch data.(type) {
 	case nil:
 		actionData = eosc.NewActionDataFromHexData([]byte("{}"))
-	case map[string]interface{}:
-		actionBinary, err := m.API.ABIJSONToBin(context.Background(), contract, eosc.Name(action), v)
-		if err != nil {
-			if retries > 0 {
-				if isRetryableError(err) {
-					time.Sleep(time.Duration(retrySleep) * time.Second)
-					return m.BuildAction(contractName, actionName, permissionLevel, data, retries-1)
-				}
-			}
-			return nil, fmt.Errorf("cannot pack action data for action: %v", err)
-		}
-		actionData = eosc.NewActionDataFromHexData([]byte(actionBinary))
+	// case map[string]interface{}:
+	// 	actionBinary, err := m.API.ABIJSONToBin(context.Background(), contract, eosc.Name(action), v)
+	// 	if err != nil {
+	// 		if retries > 0 {
+	// 			if isRetryableError(err) {
+	// 				time.Sleep(time.Duration(retrySleep) * time.Second)
+	// 				return m.BuildAction(contractName, actionName, permissionLevel, data, retries-1)
+	// 			}
+	// 		}
+	// 		return nil, fmt.Errorf("cannot pack action data for action: %v", err)
+	// 	}
+	// 	actionData = eosc.NewActionDataFromHexData([]byte(actionBinary))
 
 	default:
+		fmt.Println("Encoding data: ", data)
 		actionData = eosc.NewActionData(data)
 	}
 

@@ -22,6 +22,7 @@
 package contract
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -29,6 +30,33 @@ import (
 	"github.com/sebastianmontero/eos-go-toolbox/dto"
 	"github.com/sebastianmontero/eos-go-toolbox/service"
 )
+
+type ModifySettingArgs struct {
+	Setter eos.AccountName `json:"setter"`
+	Key    string          `json:"key"`
+	Value  *dto.FlexValue  `json:"value"`
+}
+
+func (m *ModifySettingArgs) String() string {
+	result, err := json.Marshal(m)
+	if err != nil {
+		panic(fmt.Sprintf("Failed marshalling round: %v", err))
+	}
+	return string(result)
+}
+
+type EraseSettingArgs struct {
+	Setter eos.AccountName `json:"setter"`
+	Key    string          `json:"key"`
+}
+
+func (m *EraseSettingArgs) String() string {
+	result, err := json.Marshal(m)
+	if err != nil {
+		panic(fmt.Sprintf("Failed marshalling round: %v", err))
+	}
+	return string(result)
+}
 
 type Setting struct {
 	ID          uint64             `json:"id"`
@@ -38,15 +66,12 @@ type Setting struct {
 	UpdatedDate eos.BlockTimestamp `json:"updated_date"`
 }
 
-type ModifySettingArgs struct {
-	Setter eos.AccountName `json:"setter"`
-	Value  *dto.FlexValue  `json:"value"`
-	Key    string          `json:"key"`
-}
-
-type EraseSettingArgs struct {
-	Setter eos.AccountName `json:"setter"`
-	Key    string          `json:"key"`
+func (m *Setting) String() string {
+	result, err := json.Marshal(m)
+	if err != nil {
+		panic(fmt.Sprintf("Failed marshalling round: %v", err))
+	}
+	return string(result)
 }
 
 func (m *Setting) ValueCount() int {
@@ -251,10 +276,11 @@ func (m *SettingsContract) EraseSetting(owner eos.AccountName, key string) (*ser
 func (m *SettingsContract) ProposeEraseSetting(proposerName interface{}, requested []eos.PermissionLevel, expireIn time.Duration, owner eos.AccountName,
 	key string) (*service.ProposeResponse, error) {
 
-	actionData := make(map[string]interface{})
-	actionData["setter"] = owner
-	actionData["key"] = key
-	return m.ProposeAction(proposerName, requested, expireIn, string(owner), "erasesetting", actionData)
+	eraseArgs := &EraseSettingArgs{
+		Setter: owner,
+		Key:    key,
+	}
+	return m.ProposeAction(proposerName, requested, expireIn, string(owner), "erasesetting", eraseArgs)
 }
 
 func (m *SettingsContract) GetSettings() ([]Setting, error) {
@@ -318,6 +344,7 @@ func (m *SettingsContract) SetupConfigSetting(owner eos.AccountName, configSetti
 	}
 	_, err = m.SetSetting(owner, setting.Key, setting.Values[0])
 	if err != nil {
+		fmt.Println("Error in set setting: ", setting.Key, setting.Values[0])
 		return err
 	}
 
@@ -350,7 +377,10 @@ func (m *SettingsContract) ProposeConfigSetting(proposerName interface{}, reques
 
 func GetConfigSetting(setting map[interface{}]interface{}) (*Setting, error) {
 
-	fv := dto.NewFlexValue(setting["type"].(string), setting["value"].(string))
+	fv, err := dto.ParseToFlexValue(setting["type"].(string), setting["value"].(string))
+	if err != nil {
+		return nil, fmt.Errorf("failed parsing setting to flex value, error: %v", err)
+	}
 	return &Setting{
 		Key: setting["key"].(string),
 		Values: []*dto.FlexValue{
