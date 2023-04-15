@@ -741,7 +741,7 @@ func (m *EOS) BuildAction(contractName, actionName, permissionLevel, data interf
 	// 	actionData = eosc.NewActionDataFromHexData([]byte(actionBinary))
 
 	default:
-		fmt.Println("Encoding data: ", data)
+		// fmt.Println("Encoding data: ", data)
 		actionData = eosc.NewActionData(data)
 	}
 

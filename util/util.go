@@ -80,11 +80,36 @@ func AdjustPrecision(amount *big.Int, precision, newPrecision uint8) *big.Int {
 	}
 }
 
+func IsNullTime(t time.Time) bool {
+	return t.Unix() == 0
+}
+
+func IsNullTimePoint(t eos.TimePoint) bool {
+	return t == eos.TimePoint(0)
+}
+
+func BlockTimestampToString(t eos.BlockTimestamp) string {
+	return TimeToString(t.Time)
+}
+
+func TimePointToString(t eos.TimePoint) string {
+	if IsNullTimePoint(t) {
+		return ""
+	}
+	return t.String()
+}
+
 func TimeToString(t time.Time) string {
+	if IsNullTime(t) {
+		return ""
+	}
 	return t.Format("2006-01-02T15:04:05.000")
 }
 
 func UTCTimeToString(t time.Time) string {
+	if IsNullTime(t) {
+		return ""
+	}
 	return t.UTC().Format("2006-01-02T15:04:05.000")
 }
 
@@ -98,6 +123,18 @@ func UTCNowToString() string {
 
 func UTCShiftedTimeToString(d time.Duration) string {
 	return UTCTimeToString(time.Now().Add(d))
+}
+
+func ShiftedTime(d time.Duration) time.Time {
+	return time.Now().Add(d)
+}
+
+func ShiftedBlockTimestamp(d time.Duration) eos.BlockTimestamp {
+	return eos.BlockTimestamp{Time: time.Now().Add(d)}
+}
+
+func ShiftedTimePoint(d time.Duration) eos.TimePoint {
+	return eos.TimePoint(time.Now().Add(d).UnixMicro())
 }
 
 // ToTime Converts string time to time.Time
