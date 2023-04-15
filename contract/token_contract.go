@@ -3,10 +3,10 @@ package contract
 import (
 	"strings"
 
-	eosc "github.com/eoscanada/eos-go"
-	"github.com/eoscanada/eos-go/token"
+	eosc "github.com/sebastianmontero/eos-go"
 	"github.com/sebastianmontero/eos-go-toolbox/service"
 	"github.com/sebastianmontero/eos-go-toolbox/util"
+	"github.com/sebastianmontero/eos-go/token"
 )
 
 type TokenContract struct {

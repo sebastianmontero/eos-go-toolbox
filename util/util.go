@@ -7,7 +7,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/eoscanada/eos-go"
+	"github.com/sebastianmontero/eos-go"
 )
 
 const (

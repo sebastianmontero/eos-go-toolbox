@@ -28,7 +28,7 @@ import (
 
 	"github.com/sebastianmontero/eos-go-toolbox/err"
 
-	eos "github.com/eoscanada/eos-go"
+	eos "github.com/sebastianmontero/eos-go"
 )
 
 // FlexValueVariant may hold a name, int64, asset, string, or time_point

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	eosc "github.com/eoscanada/eos-go"
+	eosc "github.com/sebastianmontero/eos-go"
 )
 
 type Block struct {

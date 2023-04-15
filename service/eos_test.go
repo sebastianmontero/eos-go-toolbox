@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	eosc "github.com/eoscanada/eos-go"
+	eosc "github.com/sebastianmontero/eos-go"
 	"github.com/sebastianmontero/eos-go-toolbox/service"
 	"gotest.tools/assert"
 )

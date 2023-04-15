@@ -3,12 +3,10 @@ module github.com/sebastianmontero/eos-go-toolbox
 go 1.16
 
 require (
-	github.com/digital-scarcity/eos-go-test v0.0.0-20221012234131-071de01a715c
-	github.com/eoscanada/eos-go v0.10.2
-	github.com/ethereum/go-ethereum v1.9.9 // indirect
-	github.com/tidwall/sjson v1.0.4 // indirect
+	github.com/digital-scarcity/eos-go-test v0.0.0-20230415144134-50e76c085618
+	github.com/sebastianmontero/eos-go v0.10.4
 	gotest.tools v2.2.0+incompatible
 )
 
 // replace github.com/digital-scarcity/eos-go-test => ../eos-go-test
-replace github.com/eoscanada/eos-go => ../eos-go
+// replace github.com/sebastianmontero/eos-go => ../eos-go

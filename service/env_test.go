@@ -31,7 +31,7 @@ import (
 
 	eostest "github.com/digital-scarcity/eos-go-test"
 
-	eos "github.com/eoscanada/eos-go"
+	eos "github.com/sebastianmontero/eos-go"
 	"gotest.tools/assert"
 )
 

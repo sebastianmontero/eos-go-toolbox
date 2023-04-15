@@ -14,13 +14,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/eoscanada/eos-go"
-	eosc "github.com/eoscanada/eos-go"
-	"github.com/eoscanada/eos-go/ecc"
-	"github.com/eoscanada/eos-go/msig"
-	"github.com/eoscanada/eos-go/system"
+	"github.com/sebastianmontero/eos-go"
+	eosc "github.com/sebastianmontero/eos-go"
 	"github.com/sebastianmontero/eos-go-toolbox/dto"
 	"github.com/sebastianmontero/eos-go-toolbox/util"
+	"github.com/sebastianmontero/eos-go/ecc"
+	"github.com/sebastianmontero/eos-go/msig"
+	"github.com/sebastianmontero/eos-go/system"
 )
 
 var EOSIOKey = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
