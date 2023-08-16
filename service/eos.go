@@ -527,27 +527,42 @@ func (m *EOS) GetAllTableRows(req eosc.GetTableRowsRequest, keyName string, stru
 
 }
 
-func (m *EOS) GetAllTableRowsAsMap(req eosc.GetTableRowsRequest, keyName string) ([]map[string]interface{}, error) {
-	return m.GetAllTableRowsFromAsMap(req, keyName, "")
+type GetIndexValue func(keyValue string) (string, error)
+
+func defaultGetIndexValue(keyValue string) (string, error) {
+	return fmt.Sprintf("%v", keyValue), nil
 }
 
-func (m *EOS) GetAllTableRowsFromAsMap(req eosc.GetTableRowsRequest, keyName, startFrom string) ([]map[string]interface{}, error) {
+func (m *EOS) GetAllTableRowsAsMap(req eosc.GetTableRowsRequest, keyName string) ([]map[string]interface{}, error) {
+	return m.GetAllTableRowsFromAsMap(req, keyName, "", nil)
+}
+
+func (m *EOS) GetAllTableRowsFromAsMap(req eosc.GetTableRowsRequest, keyName, startFrom string, getIndexValue GetIndexValue) ([]map[string]interface{}, error) {
 	allRows := make([]map[string]interface{}, 0)
 	lowerBound := startFrom
+	if getIndexValue == nil {
+		getIndexValue = defaultGetIndexValue
+	}
 	for {
+		var err error
+		lowerBound, err = getIndexValue(lowerBound)
+		if err != nil {
+			return nil, fmt.Errorf("failed getting index value: %v", err)
+		}
 		req.LowerBound = lowerBound
-		req.Limit = 1000
+		req.Limit = 2
 		var rows []map[string]interface{}
-		err := m.GetTableRows(req, &rows)
+		err = m.GetTableRows(req, &rows)
 		if err != nil {
 			return nil, fmt.Errorf("failed getting table rows %v", err)
 		}
-		if lowerBound != startFrom {
+		if lowerBound != startFrom && len(rows) > 0 {
 			rows = rows[1:]
 		}
 		if len(rows) == 0 {
 			return allRows, nil
 		}
+
 		lowerBound = fmt.Sprintf("%v", (rows[len(rows)-1][keyName]))
 		allRows = append(allRows, rows...)
 	}
