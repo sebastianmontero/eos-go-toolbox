@@ -24,6 +24,8 @@ package contract
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"strconv"
 	"time"
 
 	eos "github.com/sebastianmontero/eos-go"
@@ -285,6 +287,20 @@ func (m *SettingsContract) ProposeEraseSetting(proposerName interface{}, request
 
 func (m *SettingsContract) GetSettings() ([]Setting, error) {
 	return m.GetSettingsReq(nil)
+}
+
+func (m *SettingsContract) GetAllSettingsAsMap() ([]map[string]interface{}, error) {
+	req := eos.GetTableRowsRequest{
+		Table: "settings",
+	}
+	return m.GetAllTableRowsFromAsMap(req, "id", "0", func(keyValue string) (string, error) {
+		f, _, err := new(big.Float).Parse(keyValue, 10)
+		if err != nil {
+			return "", err
+		}
+		num, _ := f.Uint64()
+		return strconv.FormatUint(num, 10), nil
+	})
 }
 
 func (m *SettingsContract) GetSetting(key string) (*Setting, error) {
