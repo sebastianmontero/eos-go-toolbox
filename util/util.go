@@ -23,6 +23,15 @@ func MultiplyAsset(asset eos.Asset, times int64) eos.Asset {
 	return eos.Asset{Amount: total, Symbol: asset.Symbol}
 }
 
+func MultiplyAssets(amount, value eos.Asset) eos.Asset {
+	result := big.NewInt(0).Mul(big.NewInt(int64(amount.Amount)), big.NewInt(int64(value.Amount)))
+	result = AdjustPrecision(result, amount.Precision+value.Precision, value.Precision)
+	if !result.IsInt64() {
+		panic("Division overflow")
+	}
+	return eos.Asset{Amount: eos.Int64(result.Int64()), Symbol: value.Symbol}
+}
+
 // func CalculatePercentage(amount interface{}, percentage uint32) eos.Asset {
 // 	amnt, err := ToAsset(amount)
 // 	if err != nil {
