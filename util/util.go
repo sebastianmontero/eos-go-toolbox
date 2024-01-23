@@ -12,6 +12,7 @@ import (
 
 const (
 	PercentageAdjustment = float64(10000000)
+	HundredPercent       = uint32(10000000)
 	charset              = "abcdefghijklmnopqrstuvwxyz" + "12345"
 )
 
@@ -50,7 +51,7 @@ func CalculateAssetPercentage(amount interface{}, percentage uint32) eos.Asset {
 }
 
 func CalculatePercentage(amount int64, percentage uint32) int64 {
-	percAdj := big.NewInt(10000000)
+	percAdj := big.NewInt(int64(PercentageAdjustment))
 	r := big.NewInt(0)
 	r.Mul(big.NewInt(int64(amount)), big.NewInt(int64(percentage)))
 	r.Div(r, percAdj)
