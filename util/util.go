@@ -160,6 +160,8 @@ func ToAccountName(value interface{}) (eos.AccountName, error) {
 	switch v := value.(type) {
 	case string:
 		return eos.AN(v), nil
+	case eos.Name:
+		return eos.AN(v.String()), nil
 	case eos.AccountName:
 		return v, nil
 	default:
@@ -181,6 +183,8 @@ func ToActionName(value interface{}) (eos.ActionName, error) {
 func ToName(value interface{}) (eos.Name, error) {
 	switch v := value.(type) {
 	case string:
+		return eos.Name(v), nil
+	case eos.AccountName:
 		return eos.Name(v), nil
 	case eos.Name:
 		return v, nil

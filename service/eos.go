@@ -267,11 +267,18 @@ func (m *EOS) SetContract(accountName interface{}, wasmFile, abiFile string, pub
 		return nil, fmt.Errorf("unable construct set_code action: %v", err)
 	}
 
+	_, err = m.Trx(retries, setCodeAction)
+	if err != nil {
+		if !strings.Contains(err.Error(), "contract is already running this version of code") {
+			return nil, err
+		}
+	}
+
 	setAbiAction, err := system.NewSetABI(account, abiFile)
 	if err != nil {
 		return nil, fmt.Errorf("unable construct set_abi action: %v", err)
 	}
-	resp, err := m.Trx(retries, setCodeAction, setAbiAction)
+	resp, err := m.Trx(retries, setAbiAction)
 	if err != nil {
 		if !strings.Contains(err.Error(), "contract is already running this version of code") {
 			return nil, err
