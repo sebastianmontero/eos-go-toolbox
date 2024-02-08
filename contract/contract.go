@@ -97,6 +97,43 @@ func (m *Contract) GetAllTableRowsFromAsMap(request eos.GetTableRowsRequest, key
 	return m.EOS.GetAllTableRowsFromAsMap(request, keyName, start, getIndexValue)
 }
 
+func (m *Contract) GetAllTableRowsWithScopesAsMap(table, keyName, start string, getIndexValue service.GetIndexValue) ([]map[string]interface{}, error) {
+
+	scopes, err := m.GetAllTableScopes(table)
+	if err != nil {
+		return nil, fmt.Errorf("failed getting scopes for table: %v, error: %v", table, err)
+	}
+	var all []map[string]interface{}
+	for _, scope := range scopes {
+		req := eos.GetTableRowsRequest{
+			Table: table,
+			Scope: scope.Scope,
+		}
+		// fmt.Printf("Getting rows for scope: %v keyName: %v start: %v", scope.Scope, keyName, start)
+		rows, err := m.GetAllTableRowsFromAsMap(req, keyName, start, getIndexValue)
+		if err != nil {
+			return nil, fmt.Errorf("failed getting rows for table: %v and scope: %v, error: %v", table, scope.Scope, err)
+		}
+		// fmt.Println("rows: ", rows)
+		for _, row := range rows {
+			row["_scope"] = scope.Scope
+		}
+		all = append(all, rows...)
+	}
+
+	return all, nil
+}
+
+func (m *Contract) DisplayScopes(scopes []*service.TableScope) {
+	for _, scope := range scopes {
+		m.DisplayScope(scope)
+	}
+}
+
+func (m *Contract) DisplayScope(scope *service.TableScope) {
+	fmt.Println("Scope: ", scope.Scope)
+}
+
 func (m *Contract) GetTableScopes(request eos.GetTableByScopeRequest) (*service.TableScopesResp, error) {
 
 	if request.Code == "" {
@@ -123,4 +160,12 @@ func (m *Contract) IsTableEmpty(table string) (bool, error) {
 
 func (m *Contract) AreTablesEmpty(tables []string) (bool, error) {
 	return m.EOS.AreTablesEmpty(string(m.ContractName), tables)
+}
+
+func (m *Contract) DoAllScopesHaveData(tables []string) (bool, error) {
+	return m.EOS.DoAllScopesHaveData(string(m.ContractName), tables)
+}
+
+func (m *Contract) DoAllTableScopesHaveData(table string) (bool, error) {
+	return m.EOS.DoAllTableScopesHaveData(string(m.ContractName), table)
 }
