@@ -161,11 +161,3 @@ func (m *Contract) IsTableEmpty(table string) (bool, error) {
 func (m *Contract) AreTablesEmpty(tables []string) (bool, error) {
 	return m.EOS.AreTablesEmpty(string(m.ContractName), tables)
 }
-
-func (m *Contract) DoAllScopesHaveData(tables []string) (bool, error) {
-	return m.EOS.DoAllScopesHaveData(string(m.ContractName), tables)
-}
-
-func (m *Contract) DoAllTableScopesHaveData(table string) (bool, error) {
-	return m.EOS.DoAllTableScopesHaveData(string(m.ContractName), table)
-}

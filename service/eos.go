@@ -472,36 +472,6 @@ func (m *EOS) LinkPermission(accountName, actionName, permissionName interface{}
 	return nil
 }
 
-func (m *EOS) DoAllScopesHaveData(code string, tables []string) (bool, error) {
-	for _, table := range tables {
-		haveData, err := m.DoAllTableScopesHaveData(code, table)
-		if err != nil {
-			return false, err
-		}
-		if !haveData {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
-func (m *EOS) DoAllTableScopesHaveData(code, table string) (bool, error) {
-	scopes, err := m.GetAllTableScopes(code, table)
-	if err != nil {
-		return false, fmt.Errorf("error getting table: %v scopes, error: %v", table, err)
-	}
-	for _, scope := range scopes {
-		empty, err := m.IsTableScopeEmpty(code, scope.Scope, table)
-		if err != nil {
-			return false, err
-		}
-		if empty {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
 func (m *EOS) AreTablesEmpty(code string, tables []string) (bool, error) {
 	for _, table := range tables {
 		empty, err := m.IsTableEmpty(code, table)
