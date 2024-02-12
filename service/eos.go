@@ -85,6 +85,14 @@ func NameFromString(s string) (eos.Name, error) {
 	return eos.Name(s), nil
 }
 
+func AccountNameFromString(s string) (eos.AccountName, error) {
+	_, err := NameFromString(s)
+	if err != nil {
+		return "", err
+	}
+	return eos.AN(s), nil
+}
+
 func GetEOSIOKey() *ecc.PrivateKey {
 	key, _ := GetKey(EOSIOKey)
 	return key
