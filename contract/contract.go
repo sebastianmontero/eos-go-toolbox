@@ -43,12 +43,24 @@ func (m *Contract) ExecActionC(contract, permissionLevel, action, data interface
 	return &service.PushTransactionFullResp{PushTransactionFullResp: resp}, nil
 }
 
+func (m *Contract) BuildAction(actionName, permissionLevel, data interface{}) (*eos.Action, error) {
+	return m.EOS.BuildAction(m.ContractName, actionName, permissionLevel, data)
+}
+
 func (m *Contract) ExecAction(permissionLevel, action, data interface{}) (*service.PushTransactionFullResp, error) {
 	return m.ExecActionC(m.ContractName, permissionLevel, action, data)
 }
 
+func (m *Contract) ExecActions(actions ...*eos.Action) (*service.PushTransactionFullResp, error) {
+	resp, err := m.EOS.Trx(actions...)
+	if err != nil {
+		return nil, err
+	}
+	return &service.PushTransactionFullResp{PushTransactionFullResp: resp}, nil
+}
+
 func (m *Contract) ProposeAction(proposerName interface{}, requested []eos.PermissionLevel, expireIn time.Duration, permissionLevel, actionName, data interface{}) (*service.ProposeResponse, error) {
-	action, err := m.EOS.BuildAction(m.ContractName, actionName, permissionLevel, data, 5)
+	action, err := m.EOS.BuildAction(m.ContractName, actionName, permissionLevel, data)
 	if err != nil {
 		return nil, fmt.Errorf("failed proposing multisig action, error building action: %v", err)
 	}

@@ -341,15 +341,28 @@ func (m *SettingsContract) GetSettingsReq(req *eos.GetTableRowsRequest) ([]Setti
 	return settings, nil
 }
 
-func (m *SettingsContract) SetupConfigSettings(owner eos.AccountName, settings interface{}) error {
+func (m *SettingsContract) BuildSetSettingActions(owner eos.AccountName, settings interface{}) ([]*eos.Action, error) {
+	actions := make([]*eos.Action, 0)
 	for _, value := range settings.([]interface{}) {
-		err := m.SetupConfigSetting(owner, value.(map[interface{}]interface{}))
+		setting, err := GetConfigSetting(value.(map[interface{}]interface{}))
 		if err != nil {
-			fmt.Println("Config setting: ", value.(map[interface{}]interface{}))
-			return err
+			return nil, fmt.Errorf("failed getting config setting: %v, error: %v", value, err)
 		}
+		action, err := m.BuildAction("setsetting", owner, m.getSetterData(owner, setting.Key, setting.Values[0]))
+		if err != nil {
+			return nil, fmt.Errorf("failed building action: %v, error: %v", setting, err)
+		}
+		actions = append(actions, action)
 	}
-	return nil
+	return actions, nil
+}
+
+func (m *SettingsContract) SetupConfigSettings(owner eos.AccountName, settings interface{}) (*service.PushTransactionFullResp, error) {
+	actions, err := m.BuildSetSettingActions(owner, settings)
+	if err != nil {
+		return nil, fmt.Errorf("failed building set setting actions: %v, error: %v", settings, err)
+	}
+	return m.ExecActions(actions...)
 }
 
 func (m *SettingsContract) SetupConfigSetting(owner eos.AccountName, configSetting map[interface{}]interface{}) error {
@@ -367,14 +380,12 @@ func (m *SettingsContract) SetupConfigSetting(owner eos.AccountName, configSetti
 	return nil
 }
 
-func (m *SettingsContract) ProposeConfigSettings(proposerName interface{}, requested []eos.PermissionLevel, expireIn time.Duration, owner eos.AccountName, settings interface{}) error {
-	for _, value := range settings.([]interface{}) {
-		err := m.ProposeConfigSetting(proposerName, requested, expireIn, owner, value.(map[interface{}]interface{}))
-		if err != nil {
-			return err
-		}
+func (m *SettingsContract) ProposeConfigSettings(proposerName interface{}, requested []eos.PermissionLevel, expireIn time.Duration, owner eos.AccountName, settings interface{}) (*service.ProposeResponse, error) {
+	actions, err := m.BuildSetSettingActions(owner, settings)
+	if err != nil {
+		return nil, fmt.Errorf("failed building set setting actions: %v, error: %v", settings, err)
 	}
-	return nil
+	return m.EOS.ProposeMultiSig(proposerName, requested, expireIn, actions...)
 }
 
 func (m *SettingsContract) ProposeConfigSetting(proposerName interface{}, requested []eos.PermissionLevel, expireIn time.Duration, owner eos.AccountName, configSetting map[interface{}]interface{}) error {

@@ -133,7 +133,11 @@ func (m *EOS) AddEOSIOKey() (*ecc.PublicKey, error) {
 	return m.AddKey(EOSIOKey)
 }
 
-func (m *EOS) Trx(retries int, actions ...*eosc.Action) (*eosc.PushTransactionFullResp, error) {
+func (m *EOS) Trx(actions ...*eosc.Action) (*eosc.PushTransactionFullResp, error) {
+	return m.TrxWithRetries(retries, actions...)
+}
+
+func (m *EOS) TrxWithRetries(retries int, actions ...*eosc.Action) (*eosc.PushTransactionFullResp, error) {
 	// for _, action := range actions {
 	// 	logger.Infof("Trx Account: %v Name: %v, Authorization: %v, Data: %v", action.Account, action.Name, action.Authorization, action.ActionData)
 
@@ -146,7 +150,7 @@ func (m *EOS) Trx(retries int, actions ...*eosc.Action) (*eosc.PushTransactionFu
 		if retries > 0 {
 			if isRetryableError(err) {
 				time.Sleep(time.Duration(retrySleep) * time.Second)
-				return m.Trx(retries-1, actions...)
+				return m.TrxWithRetries(retries-1, actions...)
 			}
 		}
 		return nil, fmt.Errorf("failed to push trx: %v, error: %v", actions, err)
@@ -167,11 +171,11 @@ func isRetryableError(err error) bool {
 }
 
 func (m *EOS) SimpleTrx(contract, actionName, permissionLevel, data interface{}) (*eosc.PushTransactionFullResp, error) {
-	action, err := m.BuildAction(contract, actionName, permissionLevel, data, retries)
+	action, err := m.BuildAction(contract, actionName, permissionLevel, data)
 	if err != nil {
 		return nil, err
 	}
-	return m.Trx(retries, action)
+	return m.Trx(action)
 }
 
 func (m *EOS) DebugTrx(contract, actionName, permissionLevel, data interface{}) (*eosc.PushTransactionFullResp, error) {
@@ -179,7 +183,7 @@ func (m *EOS) DebugTrx(contract, actionName, permissionLevel, data interface{}) 
 	if err := txOpts.FillFromChain(context.Background(), m.API); err != nil {
 		return nil, err
 	}
-	action, err := m.BuildAction(contract, actionName, permissionLevel, data, retries)
+	action, err := m.BuildAction(contract, actionName, permissionLevel, data)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +229,7 @@ func (m *EOS) CreateAccount(accountName interface{}, publicKey *ecc.PublicKey, f
 			return account, nil
 		}
 	}
-	_, err = m.Trx(retries, system.NewNewAccount("eosio", account, *publicKey))
+	_, err = m.Trx(system.NewNewAccount("eosio", account, *publicKey))
 	if err != nil {
 		if failIfExists || !strings.Contains(err.Error(), "name is already taken") {
 			return "", err
@@ -275,7 +279,7 @@ func (m *EOS) SetContract(accountName interface{}, wasmFile, abiFile string, pub
 		return nil, fmt.Errorf("unable construct set_code action: %v", err)
 	}
 
-	_, err = m.Trx(retries, setCodeAction)
+	_, err = m.Trx(setCodeAction)
 	if err != nil {
 		if !strings.Contains(err.Error(), "contract is already running this version of code") {
 			return nil, err
@@ -286,7 +290,7 @@ func (m *EOS) SetContract(accountName interface{}, wasmFile, abiFile string, pub
 	if err != nil {
 		return nil, fmt.Errorf("unable construct set_abi action: %v", err)
 	}
-	resp, err := m.Trx(retries, setAbiAction)
+	resp, err := m.Trx(setAbiAction)
 	if err != nil {
 		if !strings.Contains(err.Error(), "contract is already running this version of code") {
 			return nil, err
@@ -336,7 +340,7 @@ func (m *EOS) SetEOSIOCode(accountName interface{}) (bool, error) {
 		return false, fmt.Errorf("failed setting eosio.code permission for account: %v, error: %v", accountName, err)
 	}
 	if codePermissionAction != nil {
-		_, err = m.Trx(retries, codePermissionAction)
+		_, err = m.Trx(codePermissionAction)
 		if err != nil {
 			return false, fmt.Errorf("error setting eosio.code permission for account: %v, error: %v", accountName, err)
 		}
@@ -449,7 +453,7 @@ func (m *EOS) CreateSimplePermission(accountName, newPermissionName interface{},
 			Waits: []eosc.WaitWeight{},
 		}, permission)
 
-	_, err = m.Trx(retries, codePermissionAction)
+	_, err = m.Trx(codePermissionAction)
 	if err != nil {
 		return fmt.Errorf("error creating permission: %v, for account: %v, error: %v", newPermission, acct, err)
 	}
@@ -471,7 +475,7 @@ func (m *EOS) LinkPermission(accountName, actionName, permissionName interface{}
 		return err
 	}
 	linkAction := system.NewLinkAuth(acct, acct, action, eosc.PermissionName(permission))
-	_, err = m.Trx(retries, linkAction)
+	_, err = m.Trx(linkAction)
 	if err != nil {
 		if failIfExists || !strings.Contains(err.Error(), "new requirement is same as old") {
 			return fmt.Errorf("error linking permission: %v, to action %v:%v, error: %v", permission, acct, action, err)
@@ -737,7 +741,7 @@ func (m *EOS) GetCurrencyStat(symbol, contractName interface{}) (*eosc.GetCurren
 	return stats, nil
 }
 
-func (m *EOS) BuildAction(contractName, actionName, permissionLevel, data interface{}, retries int) (*eosc.Action, error) {
+func (m *EOS) BuildAction(contractName, actionName, permissionLevel, data interface{}) (*eosc.Action, error) {
 	var actionData eosc.ActionData
 
 	contract, err := util.ToAccountName(contractName)
@@ -758,19 +762,6 @@ func (m *EOS) BuildAction(contractName, actionName, permissionLevel, data interf
 	switch data.(type) {
 	case nil:
 		actionData = eosc.NewActionDataFromHexData([]byte("{}"))
-	// case map[string]interface{}:
-	// 	actionBinary, err := m.API.ABIJSONToBin(context.Background(), contract, eosc.Name(action), v)
-	// 	if err != nil {
-	// 		if retries > 0 {
-	// 			if isRetryableError(err) {
-	// 				time.Sleep(time.Duration(retrySleep) * time.Second)
-	// 				return m.BuildAction(contractName, actionName, permissionLevel, data, retries-1)
-	// 			}
-	// 		}
-	// 		return nil, fmt.Errorf("cannot pack action data for action: %v", err)
-	// 	}
-	// 	actionData = eosc.NewActionDataFromHexData([]byte(actionBinary))
-
 	default:
 		// fmt.Println("Encoding data: ", data)
 		actionData = eosc.NewActionData(data)
@@ -795,7 +786,7 @@ func (m *EOS) ProposeMultiSig(proposerName interface{}, requested []eosc.Permiss
 		return nil, fmt.Errorf("failed to propose multi sig, unable to build transaction, err: %v", err)
 	}
 	proposeAction := msig.NewPropose(proposer, proposalName, requested, transaction)
-	resp, err := m.Trx(retries, proposeAction)
+	resp, err := m.Trx(proposeAction)
 	if err != nil {
 		return nil, fmt.Errorf("failed pushing propose transaction, error: %v", err)
 	}
@@ -816,7 +807,7 @@ func (m *EOS) ApproveMultiSig(proposerName interface{}, proposalName interface{}
 	}
 
 	approveAction := msig.NewApprove(proposer, proposal, permissionLevel)
-	resp, err := m.Trx(retries, approveAction)
+	resp, err := m.Trx(approveAction)
 	if err != nil {
 		return nil, fmt.Errorf("failed pushing approve transaction, error: %v", err)
 	}
@@ -839,7 +830,7 @@ func (m *EOS) ExecuteMultiSig(proposerName interface{}, proposalName interface{}
 	}
 
 	execAction := msig.NewExec(proposer, proposal, executer)
-	resp, err := m.Trx(retries, execAction)
+	resp, err := m.Trx(execAction)
 	if err != nil {
 		return nil, fmt.Errorf("failed pushing exec transaction, error: %v", err)
 	}
