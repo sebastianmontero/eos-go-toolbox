@@ -402,7 +402,7 @@ func (m *EOS) GetSetEOSIOCodeAction(accountName interface{}) (*eosc.Action, erro
 		"active",
 		"owner",
 		authority,
-		"owner")
+		"active")
 	return codePermissionAction, nil
 }
 
