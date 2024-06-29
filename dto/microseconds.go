@@ -67,3 +67,9 @@ func (m *Microseconds) AsTimeDuration() time.Duration {
 func (m *Microseconds) String() string {
 	return m.Microseconds
 }
+
+func (m *Microseconds) ToMap() map[string]interface{} {
+	return map[string]interface{}{
+		"_count": m.Microseconds,
+	}
+}

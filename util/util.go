@@ -1,6 +1,7 @@
 package util
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math"
 	"math/big"
@@ -231,6 +232,23 @@ func ToSymbol(value interface{}) (eos.Symbol, error) {
 		return v, nil
 	default:
 		return eos.Symbol{}, fmt.Errorf("failed to convert: %v of type: %T to Symbol", value, value)
+	}
+}
+
+func ToChecksum256(value interface{}) (eos.Checksum256, error) {
+	switch v := value.(type) {
+	case string:
+		b, err := hex.DecodeString(v)
+		if err != nil {
+			return eos.Checksum256{}, fmt.Errorf("failed to parse value: %v to Checksum256, error: %v", v, err)
+		}
+		return eos.Checksum256(b), nil
+	case []byte:
+		return eos.Checksum256(v), nil
+	case eos.Checksum256:
+		return v, nil
+	default:
+		return eos.Checksum256{}, fmt.Errorf("failed to convert: %v of type: %T to Checksum256", value, value)
 	}
 }
 

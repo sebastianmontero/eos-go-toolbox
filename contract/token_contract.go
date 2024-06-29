@@ -21,6 +21,15 @@ func NewTokenContract(eos *service.EOS) *TokenContract {
 	}
 }
 
+func NewTokenContractWithDefaultContract(eos *service.EOS, contract string) *TokenContract {
+	return &TokenContract{
+		&Contract{
+			EOS:          eos,
+			ContractName: contract,
+		},
+	}
+}
+
 func (m *TokenContract) CreateToken(contract, issuerName, maxSupply interface{}, failIfExists bool) (*service.PushTransactionFullResp, error) {
 
 	issuer, err := util.ToAccountName(issuerName)
@@ -37,11 +46,12 @@ func (m *TokenContract) CreateToken(contract, issuerName, maxSupply interface{},
 		Issuer:        issuer,
 		MaximumSupply: supply,
 	}
-	return m.CreateTokenBase(contract, data, failIfExists)
+	return m.CreateTokenBase(m.getContract(contract), data, failIfExists)
 }
 
 func (m *TokenContract) CreateTokenBase(contract, data interface{}, failIfExists bool) (*service.PushTransactionFullResp, error) {
 
+	contract = m.getContract(contract)
 	resp, err := m.ExecActionC(contract, contract, "create", data)
 	if err != nil {
 		if failIfExists || !strings.Contains(err.Error(), "token with symbol already exists") {
@@ -67,7 +77,7 @@ func (m *TokenContract) Issue(contract, to, quantity interface{}, memo string) (
 		Quantity: qty,
 		Memo:     memo,
 	}
-	return m.ExecActionC(contract, to, "issue", data)
+	return m.ExecActionC(m.getContract(contract), to, "issue", data)
 }
 
 func (m *TokenContract) Transfer(contract, from, to, quantity interface{}, memo string) (*service.PushTransactionFullResp, error) {
@@ -93,13 +103,24 @@ func (m *TokenContract) Transfer(contract, from, to, quantity interface{}, memo 
 		Quantity: qty,
 		Memo:     memo,
 	}
-	return m.ExecActionC(contract, from, "transfer", data)
+	return m.ExecActionC(m.getContract(contract), from, "transfer", data)
 }
 
 func (m *TokenContract) GetBalance(account, symbol, contract interface{}) (*eosc.Asset, error) {
-	return m.EOS.GetBalance(account, symbol, contract)
+	return m.EOS.GetBalance(account, symbol, m.getContract(contract))
 }
 
 func (m *TokenContract) GetStat(symbol, contract interface{}) (*eosc.GetCurrencyStatsResp, error) {
-	return m.EOS.GetCurrencyStat(symbol, contract)
+	return m.EOS.GetCurrencyStat(symbol, m.getContract(contract))
+}
+
+func (m *TokenContract) getContract(contract interface{}) interface{} {
+
+	if contract == nil {
+		if m.ContractName == "" {
+			panic("Token contract must be specified as a defualt contract was not provided")
+		}
+		return m.ContractName
+	}
+	return contract
 }
