@@ -38,6 +38,12 @@ func (m *TestUtil) AssertAction(contract eos.AccountName, actionName eos.ActionN
 	return actualData
 }
 
+func (m *TestUtil) AssertNumActions(contract eos.AccountName, actionName eos.ActionName, quantity int) {
+	actions, err := m.client.GetActions(contract, actionName, quantity+1)
+	assert.NilError(m.T, err)
+	assert.Equal(m.T, len(actions), quantity)
+}
+
 func (m *TestUtil) AssertNotifications(account eos.AccountName, notifications [][]string) {
 	m.BaseAssertNotifications(account, "notify", notifications, false)
 }
