@@ -28,7 +28,12 @@ func (m *TestUtil) AssertAction(contract eos.AccountName, actionName eos.ActionN
 	assert.Assert(m.t, action != nil, "No action at pos: %v", actionPos)
 	actualData := action.Params
 	for key, value := range actionData {
-		assert.DeepEqual(m.t, actualData[key], value)
+		valueJSON, err := json.Marshal(value)
+		assert.NilError(m.t, err)
+		var valueInterface interface{}
+		err = json.Unmarshal(valueJSON, &valueInterface)
+		assert.NilError(m.t, err)
+		assert.DeepEqual(m.t, actualData[key], valueInterface)
 	}
 	return actualData
 }
