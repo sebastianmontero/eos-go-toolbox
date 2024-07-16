@@ -32,6 +32,20 @@ import (
 type Contract struct {
 	ContractName string
 	EOS          *service.EOS
+	callCounter  uint64
+}
+
+func NewContract(eos *service.EOS, contractName string) *Contract {
+	return &Contract{
+		ContractName: contractName,
+		EOS:          eos,
+		callCounter:  0,
+	}
+}
+
+func (m *Contract) NextCallCounter() uint64 {
+	m.callCounter++
+	return m.callCounter
 }
 
 // ExecActionC Accepts contract name on which to execute the action
@@ -65,6 +79,30 @@ func (m *Contract) ProposeAction(proposerName interface{}, requested []eos.Permi
 		return nil, fmt.Errorf("failed proposing multisig action, error building action: %v", err)
 	}
 	return m.EOS.ProposeMultiSig(proposerName, requested, expireIn, action)
+}
+
+func (m *Contract) ExecActionStr(permissionLevel interface{}, action string, actionData interface{}) (string, error) {
+	resp, err := m.ExecAction(permissionLevel, action, actionData)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Tx ID: %v", resp.TransactionID), nil
+}
+
+func (m *Contract) ExecActionsStr(actions ...*eos.Action) (string, error) {
+	resp, err := m.ExecActions(actions...)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Tx ID: %v", resp.TransactionID), nil
+}
+
+func (m *Contract) ProposeActionStr(proposerName interface{}, requested []eos.PermissionLevel, expireIn time.Duration, permissionLevel, actionName, data interface{}) (string, error) {
+	resp, err := m.ProposeAction(proposerName, requested, expireIn, permissionLevel, actionName, data)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Proposal Name: %v, Tx ID: %v", resp.ProposalName, resp.PushTransactionFullResp.TransactionID), nil
 }
 
 func (m *Contract) GetTableRows(request eos.GetTableRowsRequest, rows interface{}) error {
