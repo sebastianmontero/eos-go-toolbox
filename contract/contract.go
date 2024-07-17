@@ -211,3 +211,13 @@ func (m *Contract) IsTableEmpty(table string) (bool, error) {
 func (m *Contract) AreTablesEmpty(tables []string) (bool, error) {
 	return m.EOS.AreTablesEmpty(string(m.ContractName), tables)
 }
+
+func (m *Contract) GetValueOrContract(value interface{}) interface{} {
+	if value == nil {
+		if m.ContractName == "" {
+			panic("Contract not set in the contract object")
+		}
+		value = m.ContractName
+	}
+	return value
+}

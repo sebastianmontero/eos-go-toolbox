@@ -115,12 +115,5 @@ func (m *TokenContract) GetStat(symbol, contract interface{}) (*eosc.GetCurrency
 }
 
 func (m *TokenContract) getContract(contract interface{}) interface{} {
-
-	if contract == nil {
-		if m.ContractName == "" {
-			panic("Token contract must be specified as a defualt contract was not provided")
-		}
-		return m.ContractName
-	}
-	return contract
+	return m.GetValueOrContract(contract)
 }
