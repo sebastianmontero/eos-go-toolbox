@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/sebastianmontero/eos-go-toolbox/err"
 
@@ -95,6 +96,10 @@ func FlexValueFromAsset(value eos.Asset) *FlexValue {
 
 func FlexValueFromTimePoint(value eos.TimePoint) *FlexValue {
 	return newFlexValue("time_point", value)
+}
+
+func FlexValueFromTime(value time.Time) *FlexValue {
+	return FlexValueFromTimePoint(eos.TimePoint(value.UnixNano() / 1000))
 }
 
 // func FlexValueFromMicroseconds(value Microseconds) *FlexValue {
