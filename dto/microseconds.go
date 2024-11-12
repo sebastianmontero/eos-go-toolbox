@@ -73,3 +73,12 @@ func (m *Microseconds) ToMap() map[string]interface{} {
 		"_count": m.Microseconds,
 	}
 }
+
+func (m *Microseconds) Clone() *Microseconds {
+	if m == nil {
+		return nil
+	}
+	return &Microseconds{
+		Microseconds: m.Microseconds,
+	}
+}

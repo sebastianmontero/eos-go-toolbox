@@ -289,6 +289,17 @@ func (fv *FlexValue) IsEqual(fv2 *FlexValue) bool {
 	return true
 }
 
+func (fv *FlexValue) Clone() *FlexValue {
+	if fv == nil {
+		return nil
+	}
+	return &FlexValue{
+		BaseVariant: eos.BaseVariant{
+			TypeID: fv.TypeID,
+			Impl:   fv.Impl,
+		}}
+}
+
 // MarshalJSON translates to []byte
 func (fv *FlexValue) MarshalJSON() ([]byte, error) {
 	return fv.BaseVariant.MarshalJSON(FlexValueVariant)
