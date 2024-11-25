@@ -7,7 +7,9 @@ import (
 	"time"
 )
 
-var MicrosecondsPerHr int64 = 60 * 60 * 1000000
+var MicrosecondsPerSecond int64 = 1000000
+var MicrosecondsPerMinute int64 = 60 * MicrosecondsPerSecond
+var MicrosecondsPerHr int64 = 60 * MicrosecondsPerMinute
 var NanosecondsPerMicroSecond int64 = 1000
 
 type Microseconds struct {
@@ -17,6 +19,12 @@ type Microseconds struct {
 func NewMicroseconds(hrs int64) *Microseconds {
 	return &Microseconds{
 		Microseconds: strconv.FormatInt(hrs*MicrosecondsPerHr, 10),
+	}
+}
+
+func NewMicrosecondsDetailed(hrs int64, mins int64, secs int64) *Microseconds {
+	return &Microseconds{
+		Microseconds: strconv.FormatInt(hrs*MicrosecondsPerHr+mins*MicrosecondsPerMinute+secs*MicrosecondsPerSecond, 10),
 	}
 }
 
