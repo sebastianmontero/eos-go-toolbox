@@ -62,6 +62,19 @@ func CalculatePercentage(amount int64, percentage uint32) int64 {
 	return r.Int64()
 }
 
+func DivideAmounts(dividend, divisor int64) int64 {
+	scaler := big.NewInt(100000000)
+	dividendScaled := big.NewInt(0).Mul(big.NewInt(dividend), scaler)
+	divisorScaled := big.NewInt(0).Mul(big.NewInt(divisor), scaler)
+
+	result := big.NewInt(0).Div(dividendScaled, divisorScaled)
+	// fmt.Println("Divide Amounts: ", result, result.Int64(), dividendScaled, divisorScaled)
+	if !result.IsInt64() {
+		panic("Division overflow")
+	}
+	return result.Int64()
+}
+
 func DivideAssets(dividend, divisor eos.Asset) eos.Asset {
 	dividendAdj := AdjustPrecision(big.NewInt(int64(dividend.Amount)), dividend.Precision, dividend.Precision+divisor.Precision)
 	result := big.NewInt(0).Div(dividendAdj, big.NewInt(int64(divisor.Amount)))
