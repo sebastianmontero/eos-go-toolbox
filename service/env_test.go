@@ -49,7 +49,7 @@ var E *Environment
 func NewEnvironment() (*Environment, error) {
 
 	api := eos.New(testingEndpoint)
-	// api.Debug = true
+	api.Debug = true
 
 	ctx := context.Background()
 	keyBag := &eos.KeyBag{}

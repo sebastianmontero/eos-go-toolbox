@@ -1,15 +1,10 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"math/big"
-	"net/http"
-	"net/http/httputil"
 	"strconv"
 	"strings"
 	"time"
@@ -64,7 +59,11 @@ type EOS struct {
 }
 
 func NewEOSFromUrl(url string) *EOS {
-	api := eosc.New(url)
+	return NewEOSFromUrls([]string{url})
+}
+
+func NewEOSFromUrls(urls []string) *EOS {
+	api := eosc.NewFromUrls(urls)
 	return NewEOS(api)
 }
 
@@ -253,7 +252,7 @@ func (m *EOS) GetAccount(accountName interface{}) (*eosc.AccountResp, error) {
 	}
 	accountData, err := m.API.GetAccount(context.Background(), account)
 	if err != nil {
-		if strings.Contains(err.Error(), "resource not found") {
+		if strings.Contains(err.Error(), "resource not found") || strings.Contains(err.Error(), "unknown key") {
 			return nil, nil
 		}
 		return nil, err
@@ -898,115 +897,11 @@ func (m *EOS) GetActionAt(account eosc.AccountName, action eosc.ActionName, pos 
 }
 
 func (m *EOS) GetBlock(blockNum uint32) (out *dto.Block, err error) {
-	err = m.call(context.Background(), "trace_api", "get_block", M{"block_num": blockNum}, &out)
+	err = m.API.Call(context.Background(), "trace_api", "get_block", M{"block_num": blockNum}, &out)
 	if err != nil {
 		err = fmt.Errorf("failed getting block: %v, error: %v", blockNum, err)
 	}
 	return
 }
 
-func (m *EOS) call(ctx context.Context, baseAPI string, endpoint string, body interface{}, out interface{}) error {
-	jsonBody, err := enc(body)
-	if err != nil {
-		return err
-	}
-
-	targetURL := fmt.Sprintf("%s/v1/%s/%s", m.API.BaseURL, baseAPI, endpoint)
-	req, err := http.NewRequest("POST", targetURL, jsonBody)
-	if err != nil {
-		return fmt.Errorf("NewRequest: %w", err)
-	}
-
-	for k, v := range m.API.Header {
-		if req.Header == nil {
-			req.Header = http.Header{}
-		}
-		req.Header[k] = append(req.Header[k], v...)
-	}
-
-	if m.API.Debug {
-		// Useful when debugging API calls
-		requestDump, err := httputil.DumpRequest(req, true)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println("-------------------------------")
-		fmt.Println(string(requestDump))
-		fmt.Println("")
-	}
-
-	resp, err := m.API.HttpClient.Do(req.WithContext(ctx))
-	if err != nil {
-		return fmt.Errorf("%s: %w", req.URL.String(), err)
-	}
-	defer resp.Body.Close()
-
-	var cnt bytes.Buffer
-	_, err = io.Copy(&cnt, resp.Body)
-	if err != nil {
-		return fmt.Errorf("Copy: %w", err)
-	}
-
-	if resp.StatusCode == 404 {
-		var apiErr eosc.APIError
-		if err := json.Unmarshal(cnt.Bytes(), &apiErr); err != nil {
-			return ErrNotFound
-		}
-		return apiErr
-	}
-
-	if resp.StatusCode > 299 {
-		var apiErr eosc.APIError
-		if err := json.Unmarshal(cnt.Bytes(), &apiErr); err != nil {
-			return fmt.Errorf("%s: status code=%d, body=%s", req.URL.String(), resp.StatusCode, cnt.String())
-		}
-
-		// Handle cases where some API calls (/v1/chain/get_account for example) returns a 500
-		// error when retrieving data that does not exist.
-		if apiErr.IsUnknownKeyError() {
-			return ErrNotFound
-		}
-
-		return apiErr
-	}
-
-	if m.API.Debug {
-		fmt.Println("RESPONSE:")
-		responseDump, err := httputil.DumpResponse(resp, true)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println("-------------------------------")
-		fmt.Println(cnt.String())
-		fmt.Println("-------------------------------")
-		fmt.Printf("%q\n", responseDump)
-		fmt.Println("")
-	}
-
-	if err := json.Unmarshal(cnt.Bytes(), &out); err != nil {
-		return fmt.Errorf("Unmarshal: %w", err)
-	}
-
-	return nil
-}
-
-var ErrNotFound = errors.New("resource not found")
-
 type M map[string]interface{}
-
-func enc(v interface{}) (io.Reader, error) {
-	if v == nil {
-		return nil, nil
-	}
-
-	buffer := &bytes.Buffer{}
-	encoder := json.NewEncoder(buffer)
-	encoder.SetEscapeHTML(false)
-
-	err := encoder.Encode(v)
-	if err != nil {
-		return nil, err
-	}
-
-	return buffer, nil
-}
