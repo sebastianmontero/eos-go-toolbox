@@ -48,12 +48,20 @@ var E *Environment
 
 func NewEnvironment() (*Environment, error) {
 
-	api := eos.New(testingEndpoint)
+	_, err := restartNodeos()
+	if err != nil {
+		return nil, err
+	}
+
+	api, err := eos.New(testingEndpoint)
+	if err != nil {
+		return nil, err
+	}
 	api.Debug = true
 
 	ctx := context.Background()
 	keyBag := &eos.KeyBag{}
-	err := keyBag.ImportPrivateKey(ctx, eostest.DefaultKey())
+	err = keyBag.ImportPrivateKey(ctx, eostest.DefaultKey())
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +83,15 @@ func (m *Environment) Setup(t *testing.T) {
 func setupTestCase(t *testing.T) func(t *testing.T) {
 	t.Log("Bootstrapping testing environment ...")
 
-	cmd, err := eostest.RestartNodeos(false,
+	f, err := restartNodeos()
+	if err != nil {
+		assert.NilError(t, err)
+	}
+	return f
+}
+
+func restartNodeos() (func(t *testing.T), error) {
+	_, err := eostest.RestartNodeos(false,
 		"-e", "-p", "eosio",
 		"--plugin", "eosio::producer_plugin",
 		"--plugin", "eosio::producer_api_plugin",
@@ -93,7 +109,9 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 		"--delete-all-blocks",
 		// "--logconf", "/home/sebastian/nodeos/logging.json"
 	)
-	assert.NilError(t, err)
+	if err != nil {
+		return nil, err
+	}
 
 	// outfile, err := os.Create("/home/sebastian/nodeos/nodeos.log")
 	// if err != nil {
@@ -103,11 +121,9 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 	// // cmd.Stdout = outfile
 	// cmd.Stderr = outfile
 
-	t.Log("nodeos PID: ", cmd.Process.Pid)
-
 	return func(t *testing.T) {
 		// any cleanup code would go here
-	}
+	}, nil
 }
 
 func (m *Environment) setupEnvironment(t *testing.T) {

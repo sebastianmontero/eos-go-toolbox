@@ -56,20 +56,35 @@ func (m *ProposeResponse) String() string {
 type EOS struct {
 	API         *eosc.API
 	SetSignerFn func(*eosc.API)
+	Retries     uint
+	RetrySleep  uint
 }
 
-func NewEOSFromUrl(url string) *EOS {
+func NewEOSFromUrl(url string) (*EOS, error) {
 	return NewEOSFromUrls([]string{url})
 }
 
-func NewEOSFromUrls(urls []string) *EOS {
-	api := eosc.NewFromUrls(urls)
-	return NewEOS(api)
+func NewEOSFromUrls(urls []string) (*EOS, error) {
+	return NewEOSFromUrlsWithOptions(urls, retries, retrySleep)
+}
+
+func NewEOSFromUrlsWithOptions(urls []string, retries uint, retrySleep uint) (*EOS, error) {
+	api, err := eosc.NewFromUrls(urls)
+	if err != nil {
+		return nil, err
+	}
+	return NewEOSWithOptions(api, retries, retrySleep), nil
 }
 
 func NewEOS(api *eosc.API) *EOS {
+	return NewEOSWithOptions(api, retries, retrySleep)
+}
+
+func NewEOSWithOptions(api *eosc.API, retries uint, retrySleep uint) *EOS {
 	return &EOS{
-		API: api,
+		API:        api,
+		Retries:    retries,
+		RetrySleep: retrySleep,
 	}
 }
 
@@ -133,10 +148,10 @@ func (m *EOS) AddEOSIOKey() (*ecc.PublicKey, error) {
 }
 
 func (m *EOS) Trx(actions ...*eosc.Action) (*eosc.PushTransactionFullResp, error) {
-	return m.TrxWithRetries(retries, actions...)
+	return m.TrxWithRetries(m.Retries, actions...)
 }
 
-func (m *EOS) TrxWithRetries(retries int, actions ...*eosc.Action) (*eosc.PushTransactionFullResp, error) {
+func (m *EOS) TrxWithRetries(retries uint, actions ...*eosc.Action) (*eosc.PushTransactionFullResp, error) {
 	// for _, action := range actions {
 	// 	logger.Infof("Trx Account: %v Name: %v, Authorization: %v, Data: %v", action.Account, action.Name, action.Authorization, action.ActionData)
 
@@ -589,10 +604,10 @@ func (m *EOS) GetAllTableRowsFromAsMap(req eosc.GetTableRowsRequest, keyName, st
 }
 
 func (m *EOS) GetTableRows(request eosc.GetTableRowsRequest, rows interface{}) error {
-	return m.GetTableRowsRetries(request, rows, retries)
+	return m.GetTableRowsRetries(request, rows, m.Retries)
 }
 
-func (m *EOS) GetTableRowsRetries(request eosc.GetTableRowsRequest, rows interface{}, retries int) error {
+func (m *EOS) GetTableRowsRetries(request eosc.GetTableRowsRequest, rows interface{}, retries uint) error {
 
 	request.JSON = true
 	response, err := m.API.GetTableRows(context.Background(), request)
@@ -634,16 +649,16 @@ func (m *EOS) GetAllTableScopes(code, table string) ([]*TableScope, error) {
 }
 
 func (m *EOS) GetTableScopes(request eosc.GetTableByScopeRequest) (*TableScopesResp, error) {
-	return m.GetTableScopesRetries(request, retries)
+	return m.GetTableScopesRetries(request, m.Retries)
 }
 
-func (m *EOS) GetTableScopesRetries(request eosc.GetTableByScopeRequest, retries int) (*TableScopesResp, error) {
+func (m *EOS) GetTableScopesRetries(request eosc.GetTableByScopeRequest, retries uint) (*TableScopesResp, error) {
 
 	response, err := m.API.GetTableByScope(context.Background(), request)
 	if err != nil {
 		if retries > 0 {
 			if isRetryableError(err) {
-				time.Sleep(time.Duration(retrySleep) * time.Second)
+				time.Sleep(time.Duration(m.RetrySleep) * time.Second)
 				return m.GetTableScopesRetries(request, retries-1)
 			}
 		}
