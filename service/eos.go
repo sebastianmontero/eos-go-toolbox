@@ -126,6 +126,10 @@ func GetKey(privateKey string) (*ecc.PrivateKey, error) {
 	return key, nil
 }
 
+func (m *EOS) ChainID() string {
+	return m.API.ChainID.String()
+}
+
 func (m *EOS) AddKey(privateKey string) (*ecc.PublicKey, error) {
 	// logger.Infof("PKey: %v", pkey)
 	if m.API.Signer == nil {
