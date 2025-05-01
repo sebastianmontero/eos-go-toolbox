@@ -171,7 +171,7 @@ func (m *EOS) TrxWithRetries(retries uint, actions ...*eosc.Action) (*eosc.PushT
 				return m.TrxWithRetries(retries-1, actions...)
 			}
 		}
-		return nil, fmt.Errorf("failed to push trx: %v, error: %v", actions, err)
+		return nil, err
 	}
 	return resp, nil
 }
