@@ -73,8 +73,8 @@ github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFR
 github.com/schollz/progressbar/v3 v3.7.4 h1:G2HfclnGJR2HtTOmFkERQcRqo9J20asOFiuD6AnI5EQ=
 github.com/schollz/progressbar/v3 v3.7.4/go.mod h1:1H8m5kMPW6q5fyjpDqtBHW1JT22mu2NwHQ1ApuCPh/8=
 github.com/sebastianmontero/eos-go v0.10.4/go.mod h1:mvhjYWimguIc1NFm5miCRwtHS10/3pGFkxiXcXnH1wI=
-github.com/sebastianmontero/eos-go v0.10.5-0.20250430034556-edd426b73d85 h1:wwVPvjgT6j6wfVC6VSMxc83q7g290lsepQH20TyoLkc=
-github.com/sebastianmontero/eos-go v0.10.5-0.20250430034556-edd426b73d85/go.mod h1:mvhjYWimguIc1NFm5miCRwtHS10/3pGFkxiXcXnH1wI=
+github.com/sebastianmontero/eos-go v0.10.5-0.20250620184622-ef6fe3020894 h1:S8o3L//WRO34nWFngDMq1YyXZPcvJLIVJaPox8xOlvg=
+github.com/sebastianmontero/eos-go v0.10.5-0.20250620184622-ef6fe3020894/go.mod h1:mvhjYWimguIc1NFm5miCRwtHS10/3pGFkxiXcXnH1wI=
 github.com/streamingfast/logging v0.0.0-20210811175431-f3b44b61606a h1:Hy7ST3+wGmk4nyBanXKzhRXE63E77UEF93oG51dfq6c=
 github.com/streamingfast/logging v0.0.0-20210811175431-f3b44b61606a/go.mod h1:4GdqELhZOXj4xwc4IaBmzofzdErGynnaSzuzxy0ZIBo=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
