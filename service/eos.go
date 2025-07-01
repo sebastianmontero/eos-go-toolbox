@@ -22,6 +22,7 @@ var EOSIOKey = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
 
 const retries = 10
 const retrySleep = 2
+const strict = true
 
 type TableScope struct {
 	Code  string `json:"code"`
@@ -60,31 +61,47 @@ type EOS struct {
 	RetrySleep  uint
 }
 
+type EOSOpts struct {
+	Retries    uint
+	RetrySleep uint
+	Strict     bool
+}
+
 func NewEOSFromUrl(url string) (*EOS, error) {
 	return NewEOSFromUrls([]string{url})
 }
 
 func NewEOSFromUrls(urls []string) (*EOS, error) {
-	return NewEOSFromUrlsWithOptions(urls, retries, retrySleep)
+	return NewEOSFromUrlsWithOptions(urls, &EOSOpts{
+		Retries:    retries,
+		RetrySleep: retrySleep,
+		Strict:     strict,
+	})
 }
 
-func NewEOSFromUrlsWithOptions(urls []string, retries uint, retrySleep uint) (*EOS, error) {
-	api, err := eosc.NewFromUrls(urls)
+func NewEOSFromUrlsWithOptions(urls []string, opts *EOSOpts) (*EOS, error) {
+	api, err := eosc.NewFromUrlsWithOpts(urls, &eos.APIOpts{
+		Strict: opts.Strict,
+	})
 	if err != nil {
 		return nil, err
 	}
-	return NewEOSWithOptions(api, retries, retrySleep), nil
+	return NewEOSWithOptions(api, opts), nil
 }
 
 func NewEOS(api *eosc.API) *EOS {
-	return NewEOSWithOptions(api, retries, retrySleep)
-}
-
-func NewEOSWithOptions(api *eosc.API, retries uint, retrySleep uint) *EOS {
-	return &EOS{
-		API:        api,
+	return NewEOSWithOptions(api, &EOSOpts{
 		Retries:    retries,
 		RetrySleep: retrySleep,
+		Strict:     strict,
+	})
+}
+
+func NewEOSWithOptions(api *eosc.API, opts *EOSOpts) *EOS {
+	return &EOS{
+		API:        api,
+		Retries:    opts.Retries,
+		RetrySleep: opts.RetrySleep,
 	}
 }
 

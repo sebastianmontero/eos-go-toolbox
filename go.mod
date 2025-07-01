@@ -9,4 +9,4 @@ require (
 )
 
 // replace github.com/digital-scarcity/eos-go-test => ../eos-go-test
-// replace github.com/sebastianmontero/eos-go => ../eos-go
+replace github.com/sebastianmontero/eos-go => ../eos-go
