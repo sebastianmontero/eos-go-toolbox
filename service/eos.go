@@ -592,6 +592,10 @@ func (m *EOS) GetAllTableRowsAsMap(req eosc.GetTableRowsRequest, keyName string)
 }
 
 func (m *EOS) GetAllTableRowsFromAsMap(req eosc.GetTableRowsRequest, keyName, startFrom string, getIndexValue GetIndexValue) ([]map[string]interface{}, error) {
+	return m.GetAllTableRowsFromTillAsMap(req, keyName, startFrom, getIndexValue, "")
+}
+
+func (m *EOS) GetAllTableRowsFromTillAsMap(req eosc.GetTableRowsRequest, keyName, startFrom string, getIndexValue GetIndexValue, upperBound string) ([]map[string]interface{}, error) {
 	allRows := make([]map[string]interface{}, 0)
 	lowerBound := startFrom
 	if getIndexValue == nil {
@@ -603,7 +607,10 @@ func (m *EOS) GetAllTableRowsFromAsMap(req eosc.GetTableRowsRequest, keyName, st
 		if err != nil {
 			return nil, fmt.Errorf("failed getting index value: %v", err)
 		}
+		// fmt.Printf("lower bound: %v \n", lowerBound)
+		// time.Sleep(time.Second * 1)
 		req.LowerBound = lowerBound
+		req.UpperBound = upperBound
 		req.Limit = 2
 		var rows []map[string]interface{}
 		err = m.GetTableRows(req, &rows)
@@ -619,6 +626,7 @@ func (m *EOS) GetAllTableRowsFromAsMap(req eosc.GetTableRowsRequest, keyName, st
 		}
 
 		lowerBound = fmt.Sprintf("%v", (rows[len(rows)-1][keyName]))
+		// fmt.Printf("lower bound key value: %v \n", lowerBound)
 		allRows = append(allRows, rows...)
 	}
 
@@ -707,6 +715,8 @@ func (m *EOS) GetComposedIndexValue(firstValue interface{}, secondValue interfac
 	if err != nil {
 		return "", err
 	}
+	// fmt.Println("first int64: ", firstInt64)
+	// fmt.Println("second int64: ", secondInt64)
 	firstBigInt := big.NewInt(0)
 	secondBigInt := big.NewInt(0)
 	firstBigInt.SetUint64(firstInt64)
@@ -719,7 +729,16 @@ func (m *EOS) GetComposedIndexValue(firstValue interface{}, secondValue interfac
 func (m *EOS) getUInt64Value(value interface{}) (uint64, error) {
 
 	switch v := value.(type) {
-	case string, eosc.Name, eosc.AccountName:
+	case string:
+		vUint64, err := strconv.ParseUint(fmt.Sprintf("%v", v), 10, 64)
+		if err != nil {
+			vUint64, err = eosc.StringToName(fmt.Sprintf("%v", v))
+			if err != nil {
+				return 0, fmt.Errorf("failed to convert status to uint64, err: %v", err)
+			}
+		}
+		return vUint64, nil
+	case eosc.Name, eosc.AccountName:
 		vUint64, err := eosc.StringToName(fmt.Sprintf("%v", v))
 		if err != nil {
 			return 0, fmt.Errorf("failed to convert status to uint64, err: %v", err)
