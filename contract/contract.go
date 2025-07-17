@@ -164,7 +164,7 @@ func (m *Contract) GetAllTableRowsWithScopesAsMap(table, keyName, start string, 
 			Scope: scope.Scope,
 		}
 		// fmt.Printf("Getting rows for scope: %v keyName: %v start: %v", scope.Scope, keyName, start)
-		rows, err := m.GetAllTableRowsFromAsMap(req, keyName, start, getIndexValue)
+		rows, err := m.GetAllTableRowsFromTillAsMap(req, keyName, start, getIndexValue, "")
 		if err != nil {
 			return nil, fmt.Errorf("failed getting rows for table: %v and scope: %v, error: %v", table, scope.Scope, err)
 		}
