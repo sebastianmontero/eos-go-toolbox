@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -23,6 +24,7 @@ var EOSIOKey = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
 const retries = 10
 const retrySleep = 2
 const strict = true
+const preactivateFeatureDigest = "0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"
 
 type TableScope struct {
 	Code  string `json:"code"`
@@ -456,6 +458,30 @@ func FindAccountAuthority(permission *eosc.Permission, accountName, permissionNa
 		}
 	}
 	return -1, nil
+}
+
+func (m *EOS) ActivatePreactivateFeature(ctx context.Context) error {
+	v, err := hex.DecodeString(preactivateFeatureDigest)
+	if err != nil {
+		return err
+	}
+	return m.API.ScheduleProducerProtocolFeatureActivations(ctx, []eosc.Checksum256{v})
+}
+
+func (m *EOS) ActivateAllProtocolFeatures(ctx context.Context) error {
+	features, err := m.API.GetProducerProtocolFeatures(context.Background())
+	if err != nil {
+		return err
+	}
+	for _, feature := range features {
+		if feature.FeatureDigest.String() != preactivateFeatureDigest {
+			_, err = m.Trx(system.NewActivateFeature(eos.Checksum256(feature.FeatureDigest)))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (m *EOS) CreateSimplePermission(accountName, newPermissionName interface{}, publicKey *ecc.PublicKey) error {

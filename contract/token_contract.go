@@ -106,6 +106,10 @@ func (m *TokenContract) Transfer(contract, from, to, quantity interface{}, memo 
 	return m.ExecActionC(m.getContract(contract), from, "transfer", data)
 }
 
+func (m *TokenContract) TransferObj(contract interface{}, data *token.Transfer) (*service.PushTransactionFullResp, error) {
+	return m.ExecActionC(m.getContract(contract), data.From, "transfer", data)
+}
+
 func (m *TokenContract) GetBalance(account, symbol, contract interface{}) (*eosc.Asset, error) {
 	return m.EOS.GetBalance(account, symbol, m.getContract(contract))
 }
