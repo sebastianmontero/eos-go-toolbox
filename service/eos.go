@@ -776,6 +776,12 @@ func (m *EOS) getUInt64Value(value interface{}) (uint64, error) {
 			return 0, err
 		}
 		return vUint64, nil
+	case eosc.Symbol:
+		code, err := v.SymbolCode()
+		if err != nil {
+			return 0, err
+		}
+		return uint64(code), nil
 	default:
 		return 0, fmt.Errorf("unable to get uint64 value from: %v", value)
 	}
