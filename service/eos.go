@@ -782,6 +782,8 @@ func (m *EOS) getUInt64Value(value interface{}) (uint64, error) {
 			return 0, err
 		}
 		return uint64(code), nil
+	case eosc.TimePoint:
+		return uint64(v), nil
 	default:
 		return 0, fmt.Errorf("unable to get uint64 value from: %v", value)
 	}
